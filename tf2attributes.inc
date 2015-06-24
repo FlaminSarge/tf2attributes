@@ -171,8 +171,7 @@ native int TF2Attrib_ListDefIndices(int iEntity, int[] iDefIndices);
  * @param iAttribIndices	Array (max size 16) of attribute definition indices found on the item definition.
  * @param iAttribValues		Array (max size 16) of attribute values found on the item definition, corresponding to the indices.
  *
- * @return					The number of attributes found on the item definition's static attribute list, or -1 if some error happened.
- * @error					Invalid entity index passed.
+ * @return					The number of attributes found on the item definition's static attribute list, or -1 if no schema or item definition found.
  */
 native int TF2Attrib_GetStaticAttribs(int iItemDefIndex, int[] iAttribIndices, float[] iAttribValues);
 

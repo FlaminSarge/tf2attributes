@@ -275,7 +275,7 @@ public Native_IsIntegerValue(Handle:plugin, numParams)
 
 stock GetStaticAttribs(Address:pItemDef, iAttribIndices[], iAttribValues[])
 {
-	if (!IsValidAddress(pItemDef)) return 0;
+	if (!IsValidAddress(pItemDef)) return 0;	//...-1 maybe?
 	new iNumAttribs = LoadFromAddress(pItemDef + Address:32, NumberType_Int32);
 	new Address:pAttribList = Address:LoadFromAddress(pItemDef + Address:20, NumberType_Int32);
 	for (new i = 0; i < iNumAttribs; i++)	//THIS IS HOW YOU GET THE ATTRIBUTES ON AN ITEMDEF!
@@ -343,7 +343,7 @@ public Native_GetSOCAttribs(Handle:plugin, numParams)
 	new iEntity = GetNativeCell(1);
 	if (!IsValidEntity(iEntity))
 	{
-		ThrowNativeError(SP_ERROR_NATIVE, "TF2Attrib_GetSOCAttribs: Invalid entity index %d passed", iEntity);
+		return ThrowNativeError(SP_ERROR_NATIVE, "TF2Attrib_GetSOCAttribs: Invalid entity index %d passed", iEntity);
 	}
 	//maybe move some address stuff to here from the stock, but for now it's okay
 	new iAttribIndices[16], iAttribValues[16];

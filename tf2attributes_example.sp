@@ -460,7 +460,7 @@ public Action Command_GetAttrByName(int client, int args)
 	if (TF2Attrib_IsIntegerValue(idx)) result = float(view_as<int>(result));
 	float init;// = TF2Attrib_GetInitialValue(pAttrib);
 	if (TF2Attrib_IsIntegerValue(idx)) init = float(view_as<int>(init));
-	ReplyToCommand(client, "[SM] GetAttrib got: %d %d ; %.4f, %.4f, %d, %d for attrib '%s' on %s%d", view_as<int>(pAttrib), idx, result, init, TF2Attrib_GetRefundableCurrency(pAttrib), 0 /*TF2Attrib_GetIsSetBonus(pAttrib)*/, arg2, usePlayer ? "" : "active wep of ", target);//, target);
+	ReplyToCommand(client, "[SM] GetAttrib got: %d %d ; %.3f, %.3f, %d, %d for attrib '%s' on %s%d", view_as<int>(pAttrib), idx, result, init, TF2Attrib_GetRefundableCurrency(pAttrib), 0 /*TF2Attrib_GetIsSetBonus(pAttrib)*/, arg2, usePlayer ? "" : "active wep of ", target);//, target);
 	return Plugin_Handled;
 }
 public Action Command_GetAttrByID(int client, int args)
@@ -511,7 +511,7 @@ public Action Command_GetAttrByID(int client, int args)
 	if (TF2Attrib_IsIntegerValue(idx)) result = float(view_as<int>(result));
 	float init;// = TF2Attrib_GetInitialValue(pAttrib);
 	if (TF2Attrib_IsIntegerValue(idx)) init = float(view_as<int>(init));
-	ReplyToCommand(client, "[SM] GetAttrib got: %08X %d ; %.4f, %.4f, %d, %d for attrib '%s' on %s%d", view_as<int>(pAttrib), idx, result, init, TF2Attrib_GetRefundableCurrency(pAttrib), 0 /*TF2Attrib_GetIsSetBonus(pAttrib)*/, arg2, usePlayer ? "" : "active wep of ", target);//, target);
+	ReplyToCommand(client, "[SM] GetAttrib got: %08X %d ; %.3f, %.3f, %d, %d for attrib '%s' on %s%d", view_as<int>(pAttrib), idx, result, init, TF2Attrib_GetRefundableCurrency(pAttrib), 0 /*TF2Attrib_GetIsSetBonus(pAttrib)*/, arg2, usePlayer ? "" : "active wep of ", target);//, target);
 	return Plugin_Handled;
 }
 public Action Command_GetAttrs(int client, int args)
@@ -555,25 +555,28 @@ public Action Command_GetAttrs(int client, int args)
 		Format(arg1, sizeof(arg1), "%s %d", arg1, attriblist[i]);
 	}
 	ReplyToCommand(client, "%s on %s%d", arg1, usePlayer ? "" : "active wep of ", target);//, target);
-	float valuelist[16];
-	int count_static = TF2Attrib_GetSOCAttribs(wep, attriblist, valuelist);
-	if (count_static > 0)
+	if (!usePlayer)
 	{
-		ReplyToCommand(client, "SOC:");
-	}
-	for (int i = 0; i < count_static; i++)
-	{
-		ReplyToCommand(client, "%d: %.4f %d", attriblist[i], valuelist[i], view_as<int>(valuelist[i]));
-	}
-	int iDefIndex = GetEntProp(wep, Prop_Send, "m_iItemDefinitionIndex");
-	count_static = TF2Attrib_GetStaticAttribs(iDefIndex, attriblist, valuelist);
-	if (count_static > 0)
-	{
-		ReplyToCommand(client, "Static:");
-	}
-	for (int i = 0; i < count_static; i++)
-	{
-		ReplyToCommand(client, "%d: %.4f %d", attriblist[i], valuelist[i], view_as<int>(valuelist[i]));
+		float valuelist[16];
+		int count_static = TF2Attrib_GetSOCAttribs(wep, attriblist, valuelist);
+		if (count_static > 0)
+		{
+			ReplyToCommand(client, "SOC:");
+		}
+		for (int i = 0; i < count_static; i++)
+		{
+			ReplyToCommand(client, "%d: %.3f %d", attriblist[i], valuelist[i], view_as<int>(valuelist[i]));
+		}
+		int iDefIndex = GetEntProp(wep, Prop_Send, "m_iItemDefinitionIndex");
+		count_static = TF2Attrib_GetStaticAttribs(iDefIndex, attriblist, valuelist);
+		if (count_static > 0)
+		{
+			ReplyToCommand(client, "Static:");
+		}
+		for (int i = 0; i < count_static; i++)
+		{
+			ReplyToCommand(client, "%d: %.3f %d", attriblist[i], valuelist[i], view_as<int>(valuelist[i]));
+		}
 	}
 	return Plugin_Handled;
 }
