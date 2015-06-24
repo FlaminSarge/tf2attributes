@@ -7,9 +7,9 @@
 		{
 			"CAttributeManager::OnAttributeValuesChanged"	//use instead of ClearCache/NotifyManagerOfAttributeValueChanges
 			{
-				"windows"	"12"
-				"linux"		"13"
-				"mac"		"13"
+				"windows"	"13"
+				"linux"		"14"
+				"mac"		"14"
 			}
 			"CEconItemView::GetItemDefinition"
 			{
