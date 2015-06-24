@@ -1,0 +1,156 @@
+"Games"
+{
+	/* Team Fortress 2 */
+	"tf"
+	{
+		"Offsets"
+		{
+			"CAttributeManager::OnAttributeValuesChanged"	//use instead of ClearCache/NotifyManagerOfAttributeValueChanges
+			{
+				"windows"	"12"
+				"linux"		"13"
+				"mac"		"13"
+			}
+			"CEconItemView::GetItemDefinition"
+			{
+				"windows"	"4"
+				"linux"		"5"
+				"mac"		"5"
+			}
+		}
+		"Signatures"
+		{
+			"CEconItemSchema::GetItemDefinition"
+			{
+				"library"			"server"
+				"windows"			"\x55\x8B\xEC\x56\x8B\xF1\x8D\x45\x08\x57\x50\x8D\x4E\x60\xE8\x2A\x2A\x2A\x2A\x85\xC0"
+				"linux"				"@_ZN15CEconItemSchema17GetItemDefinitionEi"
+				"mac"				"@_ZN15CEconItemSchema17GetItemDefinitionEi"
+			}
+			"CEconItemView::GetSOCData"
+			{
+				"library"			"server"
+				"windows"			"\x56\x8B\xF1\x8B\x46\x28\x85\xC0\x75\x2A\xE8\x2A\x2A\x2A\x2A\xFF\x76\x20\x8B\xC8\x8B\x10\xFF\x52\x44\x85\xC0\x74\x2A\xFF\x76\x14\x8B\xC8\xFF\x76\x10\xE8\x96\x8B\xFD\xFF\x5E\x2A\x2A\x2A\x2A\xC3"
+				"linux"				"@_ZNK13CEconItemView10GetSOCDataEv"
+				"mac"				"@_ZNK13CEconItemView10GetSOCDataEv"
+			}
+			"CEconItem::SetCustomName"
+			{
+				"library"			"server"
+				"windows"			"\x55\x8B\xEC\xA1\x8C\xB3\x85\x10\x83\xEC\x14\x53\x8B\xD9\x56\x57\xA8\x01\x75\x2A\x83\xC8\x01\xC7\x05\x80\xB3\x85\x10\x04\x1A\x69\x10\x68\x04\x1A\x69\x10\xA3\x8C\xB3\x85\x10\xE8\x60\x22\x01\x00"
+				"linux"				"@_ZN9CEconItem13SetCustomNameEPKc"
+				"mac"				"@_ZN9CEconItem13SetCustomNameEPKc"
+			}
+			"GEconItemSchema"
+			{
+				"library"			"server"
+				"windows"			"\xE8\x2A\x2A\x2A\x2A\x83\xC0\x04\xC3"
+				"linux"				"@_Z15GEconItemSchemav"
+				"mac"				"@_Z15GEconItemSchemav"
+			}
+			"CEconItemSchema::GetAttributeDefinition"	//int, returns CEconItemAttributeDefinition
+			{
+				"library"			"server"
+				"windows"			"\x55\x8B\xEC\x83\xEC\x40\x53\x56\x8B\xD9\x8D\x4D\xC4\x57"
+				"linux"				"@_ZN15CEconItemSchema22GetAttributeDefinitionEi"
+				"mac"				"@_ZN15CEconItemSchema22GetAttributeDefinitionEi"
+			}
+			"CEconItemSchema::GetAttributeDefinitionByName"	//const char*, returns CEconItemAttributeDefinition
+			{
+				"library"			"server"
+				"windows"			"\x55\x8B\xEC\x83\xEC\x1C\x53\x8B\xD9\x8B\x0D\x2A\x2A\x2A\x2A\x56\x33\xF6\x89\x5D\xF8\x89\x75\xE4\x89\x75\xE8"
+				"linux"				"@_ZN15CEconItemSchema28GetAttributeDefinitionByNameEPKc"
+				"mac"				"@_ZN15CEconItemSchema28GetAttributeDefinitionByNameEPKc"
+			}
+			"CAttributeList::RemoveAttribute" //CEconItemAttributeDefinition*, returns CEconItemAttributeDefinition
+			{
+				"library"			"server"
+				"windows"			"\x55\x8B\xEC\x51\x53\x8B\xD9\x56\x33\xF6\x8B\x43\x10\x89\x45\xFC\x85\xC0\x7E\x2A\x57\x33\xFF"
+				"linux"				"@_ZN14CAttributeList15RemoveAttributeEPK28CEconItemAttributeDefinition"
+				"mac"				"@_ZN14CAttributeList15RemoveAttributeEPK28CEconItemAttributeDefinition"
+			}
+			"CAttributeList::SetRuntimeAttributeValue" //CEconItemAttributeDefinition*, float, returns void but somehow SetReturnInfo makes it return some nonzero client-based integer if success
+			{
+				"library"			"server"
+				"windows"			"\x55\x8B\xEC\x83\xEC\x14\x33\xD2\x53\x8B\xD9\x56\x57\x8B\x73\x10\x85\xF6"
+				"linux"				"@_ZN14CAttributeList24SetRuntimeAttributeValueEPK28CEconItemAttributeDefinitionf"
+				"mac"				"@_ZN14CAttributeList24SetRuntimeAttributeValueEPK28CEconItemAttributeDefinitionf"
+			}
+			"CAttributeList::GetAttributeByID" //int, returns CEconAttribute address
+			{
+				"library"			"server"
+				"windows"			"\x55\x8B\xEC\x51\x8B\xC1\x53\x56\x33\xF6\x89\x45\xFC\x8B\x58\x10"
+				"linux"				"@_ZNK14CAttributeList16GetAttributeByIDEi"
+				"mac"				"@_ZNK14CAttributeList16GetAttributeByIDEi"
+			}
+			"CAttributeList::DestroyAllAttributes" //this, returns int
+			{
+				"library"			"server"
+				"windows"			"\x56\x8B\xF1\x83\x7E\x10\x00\x74\x2A\xC7\x46\x10\x00\x00\x00\x00"
+				"linux"				"@_ZN14CAttributeList20DestroyAllAttributesEv"
+				"mac"				"@_ZN14CAttributeList20DestroyAllAttributesEv"
+			}
+			// Found this to be unused, commented out because of that
+//			"CAttributeList::NotifyManagerOfAttributeValueChanges" //this, presumably returns CAttributeManager
+//			{
+//				"library"			"server"
+//				"windows"			"\x56\x8B\xF1\x83\x7E\x10\x00\x74\x2A"
+//				"linux"				"@_ZN14CAttributeList36NotifyManagerOfAttributeValueChangesEv"
+//				"mac"				"@_ZN14CAttributeList36NotifyManagerOfAttributeValueChangesEv"
+//			}
+//This apparently still works, and is called by the above
+			"CAttributeManager::ClearCache" //returns void
+			{
+				"library"			"server"
+				"windows"			"\x55\x8B\xEC\x51\x56\x8B\xF1\x80\x73\x3C\x00\x0F\x85\x1A\x01\x00\x00"
+				"linux"				"@_ZN17CAttributeManager10ClearCacheEv"
+				"mac"				"@_ZN17CAttributeManager10ClearCacheEv"
+			}
+//The following are old, broken, and generally unusable as of July 10, 2013
+//			"CAttributeList::GetAttributeByID" //int, returns CEconAttribute address
+//			{
+//				"library"			"server"
+//				"windows"			"\x55\x8B\xEC\x51\x53\x8B\xD9\x8B\x43\x10"
+//				"linux"				"@_ZN14CAttributeList16GetAttributeByIDEi"
+//				"mac"				"@_ZN14CAttributeList16GetAttributeByIDEi"
+//			}
+//			"CAttributeList::GetAttributeByName" //const char*, returns CEconAttribute address
+//			{
+//				"library"			"server"
+//				"windows"			"\x55\x8B\xEC\x51\x8B\x45\x08\x53\x50\x8B\xD9"
+//				"linux"				"@_ZNK14CAttributeList18GetAttributeByNameEPKc"
+//				"mac"				"@_ZNK14CAttributeList18GetAttributeByNameEPKc"
+//			}
+//			"CAttributeList::SetOrAddAttributeValueByName" //const char*, float, returns void but somehow SetReturnInfo makes it return some nonzero client-based integer if success
+//			{
+//				"library"			"server"
+//				"windows"			"\x55\x8B\xEC\x8B\x45\x08\x83\xEC\x18\x57"
+//				"linux"				"@_ZN14CAttributeList28SetOrAddAttributeValueByNameEPKcf"
+//				"mac"				"@_ZN14CAttributeList28SetOrAddAttributeValueByNameEPKcf"
+//			}
+//			"CAttributeList::RemoveAttribute" //const char*, returns void
+//			{
+//				"library"			"server"
+//				"windows"			"\x55\x8B\xEC\x51\x56\x8B\xF1\x8B\x46\x10"
+//				"linux"				"@_ZN14CAttributeList15RemoveAttributeEPKc"
+//				"mac"				"@_ZN14CAttributeList15RemoveAttributeEPKc"
+//			}
+//The following aren't used since the above work for any entity with attributes and the below work only for CTFPlayer
+//These are in every other regard identical to CAttributeList::SetOrAddAttributeValueByName and CAttributeList::RemoveAttribute
+//			"CTFPlayer::SetOrAddAttributeValueByName" //const char*, float, returns returns void but somehow SetReturnInfo makes it return some nonzero client-based integer if success
+//			{
+//				"library"			"server"
+//				"windows"			"\x55\x8B\xEC\x8B\x45\x08\x85\xC0\x74\x2A\x50\x81\xC1\x04\x0A\x00\x00"
+//				"linux"				"@_ZN9CTFPlayer28SetOrAddAttributeValueByNameEPKcf"
+//				"mac"				"@_ZN9CTFPlayer28SetOrAddAttributeValueByNameEPKcf"
+//			}
+//			"CTFPlayer::RemovePlayerAttribute" //const char*, returns void
+//			{
+//				"library"			"server"
+//				"windows"			"\x55\x8B\xEC\x8B\x45\x08\x85\xC0\x74\x2A\x80\x38\x00"
+//				"linux"				"@_ZN9CTFPlayer21RemovePlayerAttributeEPKc"
+//				"mac"				"@_ZN9CTFPlayer21RemovePlayerAttributeEPKc"
+//			}
+		}
+	}
+}
