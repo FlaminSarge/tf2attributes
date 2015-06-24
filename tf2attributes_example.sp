@@ -1,11 +1,12 @@
 #pragma semicolon 1
+#pragma newdecls required
 
 #include <sourcemod>
 #include <tf2attributes>
 
-new Address:lastAddr[MAXPLAYERS + 1];
+Address lastAddr[MAXPLAYERS + 1];
 
-public OnPluginStart()
+public void OnPluginStart()
 {
 	RegAdminCmd("sm_addattrib", Command_AddAttrib, ADMFLAG_ROOT);
 	RegAdminCmd("sm_addwepatt", Command_AddWepAttrib, ADMFLAG_ROOT);
@@ -19,15 +20,15 @@ public OnPluginStart()
 //	RegAdminCmd("sm_attrset", SetValueStuff, ADMFLAG_ROOT); //Definitely unsafe as all hell
 	LoadTranslations("common.phrases");
 }
-public OnMapStart()
+public void OnMapStart()
 {
-	for (new client = 0; client <= MaxClients; client++)
+	for (int client = 0; client <= MaxClients; client++)
 		lastAddr[client] = Address_Null;
 }
-public Action:Command_RemAttrib(client, args)
+public Action Command_RemAttrib(int client, int args)
 {
-	decl String:arg1[32];
-	decl String:arg2[32];
+	char arg1[32];
+	char arg2[32];
 	if (args < 2)
 	{
 		ReplyToCommand(client, "[SM] Usage: sm_remattrib <target> <attrib>");
@@ -37,7 +38,7 @@ public Action:Command_RemAttrib(client, args)
 
 	GetCmdArg(1, arg1, sizeof(arg1));
 	GetCmdArg(2, arg2, sizeof(arg2));
-	new bool:bydefidx = false;
+	bool bydefidx = false;
 	if (arg2[0] == '#')
 	{
 		strcopy(arg2, sizeof(arg2), arg2[1]);
@@ -50,9 +51,10 @@ public Action:Command_RemAttrib(client, args)
 	 * target_count - variable to store number of clients
 	 * tn_is_ml - stores whether the noun must be translated
 	 */
-	new String:target_name[MAX_TARGET_LENGTH];
-	new target_list[MAXPLAYERS], target_count;
-	new bool:tn_is_ml;
+	char target_name[MAX_TARGET_LENGTH];
+	int target_list[MAXPLAYERS];
+	int target_count;
+	bool tn_is_ml;
 
 	if (arg1[0] == '#' && arg1[1] == '#')	//'##entindex' instead of target
 	{
@@ -77,7 +79,7 @@ public Action:Command_RemAttrib(client, args)
 		return Plugin_Handled;
 	}
 
-	for (new i = 0; i < target_count; i++)
+	for (int i = 0; i < target_count; i++)
 	{
 		if (IsValidEntity(target_list[i]))
 		{
@@ -93,10 +95,10 @@ public Action:Command_RemAttrib(client, args)
 		ReplyToCommand(client, "[SM] Removed attrib '%s' from %s", arg2, target_name);
 	return Plugin_Handled;
 }
-public Action:Command_RemWepAttrib(client, args)
+public Action Command_RemWepAttrib(int client, int args)
 {
-	decl String:arg1[32];
-	decl String:arg2[32];
+	char arg1[32];
+	char arg2[32];
 	if (args < 2)
 	{
 		ReplyToCommand(client, "[SM] Usage: sm_remwepatt <target> <attrib>");
@@ -106,7 +108,7 @@ public Action:Command_RemWepAttrib(client, args)
 
 	GetCmdArg(1, arg1, sizeof(arg1));
 	GetCmdArg(2, arg2, sizeof(arg2));
-	new bool:bydefidx = false;
+	bool bydefidx = false;
 	if (arg2[0] == '#')
 	{
 		strcopy(arg2, sizeof(arg2), arg2[1]);
@@ -118,9 +120,10 @@ public Action:Command_RemWepAttrib(client, args)
 	 * target_count - variable to store number of clients
 	 * tn_is_ml - stores whether the noun must be translated
 	 */
-	new String:target_name[MAX_TARGET_LENGTH];
-	new target_list[MAXPLAYERS], target_count;
-	new bool:tn_is_ml;
+	char target_name[MAX_TARGET_LENGTH];
+	int target_list[MAXPLAYERS];
+	int target_count;
+	bool tn_is_ml;
 
 	if ((target_count = ProcessTargetString(
 			arg1,
@@ -136,11 +139,11 @@ public Action:Command_RemWepAttrib(client, args)
 		ReplyToTargetError(client, target_count);
 		return Plugin_Handled;
 	}
-	for (new i = 0; i < target_count; i++)
+	for (int i = 0; i < target_count; i++)
 	{
 		if (IsValidClient(target_list[i]))
 		{
-			new wep = GetEntPropEnt(target_list[i], Prop_Send, "m_hActiveWeapon");
+			int wep = GetEntPropEnt(target_list[i], Prop_Send, "m_hActiveWeapon");
 			if (IsValidEntity(wep))
 				(bydefidx ? TF2Attrib_RemoveByDefIndex(wep, StringToInt(arg2)) : TF2Attrib_RemoveByName(wep, arg2));
 		}
@@ -151,9 +154,9 @@ public Action:Command_RemWepAttrib(client, args)
 		ReplyToCommand(client, "[SM] Removed attrib '%s' from active wep of %s", arg2, target_name);
 	return Plugin_Handled;
 }
-public Action:Command_RemAllAttrib(client, args)
+public Action Command_RemAllAttrib(int client, int args)
 {
-	decl String:arg1[32];
+	char arg1[32];
 	if (args < 1)
 	{
 		ReplyToCommand(client, "[SM] Usage: sm_remallatt <target>");
@@ -168,9 +171,10 @@ public Action:Command_RemAllAttrib(client, args)
 	 * target_count - variable to store number of clients
 	 * tn_is_ml - stores whether the noun must be translated
 	 */
-	new String:target_name[MAX_TARGET_LENGTH];
-	new target_list[MAXPLAYERS], target_count;
-	new bool:tn_is_ml;
+	char target_name[MAX_TARGET_LENGTH];
+	int target_list[MAXPLAYERS];
+	int target_count;
+	bool tn_is_ml;
 
 	if (arg1[0] == '#' && arg1[1] == '#')	//'##entindex' instead of target
 	{
@@ -194,7 +198,7 @@ public Action:Command_RemAllAttrib(client, args)
 		ReplyToTargetError(client, target_count);
 		return Plugin_Handled;
 	}
-	for (new i = 0; i < target_count; i++)
+	for (int i = 0; i < target_count; i++)
 	{
 		if (IsValidEntity(target_list[i]))
 		{
@@ -207,9 +211,9 @@ public Action:Command_RemAllAttrib(client, args)
 		ReplyToCommand(client, "[SM] Removed allattrib from %s", target_name);
 	return Plugin_Handled;
 }
-public Action:Command_RemAllWepAttrib(client, args)
+public Action Command_RemAllWepAttrib(int client, int args)
 {
-	decl String:arg1[32];
+	char arg1[32];
 	if (args < 1)
 	{
 		ReplyToCommand(client, "[SM] Usage: sm_remallwepatt <target>");
@@ -223,9 +227,10 @@ public Action:Command_RemAllWepAttrib(client, args)
 	 * target_count - variable to store number of clients
 	 * tn_is_ml - stores whether the noun must be translated
 	 */
-	new String:target_name[MAX_TARGET_LENGTH];
-	new target_list[MAXPLAYERS], target_count;
-	new bool:tn_is_ml;
+	char target_name[MAX_TARGET_LENGTH];
+	int target_list[MAXPLAYERS];
+	int target_count;
+	bool tn_is_ml;
 
 	if ((target_count = ProcessTargetString(
 			arg1,
@@ -241,11 +246,11 @@ public Action:Command_RemAllWepAttrib(client, args)
 		ReplyToTargetError(client, target_count);
 		return Plugin_Handled;
 	}
-	for (new i = 0; i < target_count; i++)
+	for (int i = 0; i < target_count; i++)
 	{
 		if (IsValidClient(target_list[i]))
 		{
-			new wep = GetEntPropEnt(target_list[i], Prop_Send, "m_hActiveWeapon");
+			int wep = GetEntPropEnt(target_list[i], Prop_Send, "m_hActiveWeapon");
 			if (IsValidEntity(wep))
 				TF2Attrib_RemoveAll(wep);
 		}
@@ -256,12 +261,12 @@ public Action:Command_RemAllWepAttrib(client, args)
 		ReplyToCommand(client, "[SM] Removed allattrib from active wep of %s", target_name);
 	return Plugin_Handled;
 }
-public Action:Command_AddAttrib(client, args)
+public Action Command_AddAttrib(int client, int args)
 {
-	decl String:arg1[32];
-	decl String:arg2[128];
-	decl String:arg3[32];
-	decl String:arg4[32];
+	char arg1[32];
+	char arg2[128];
+	char arg3[32];
+	char arg4[32];
 	if (args < 3)
 	{
 		ReplyToCommand(client, "[SM] Usage: sm_addattrib <target> <attrib> <val> [pass as int]");
@@ -270,7 +275,7 @@ public Action:Command_AddAttrib(client, args)
 
 	GetCmdArg(1, arg1, sizeof(arg1));
 	GetCmdArg(2, arg2, sizeof(arg2));
-	new bool:bydefidx = false;
+	bool bydefidx = false;
 	if (arg2[0] == '#')
 	{
 		strcopy(arg2, sizeof(arg2), arg2[1]);
@@ -279,16 +284,17 @@ public Action:Command_AddAttrib(client, args)
 	GetCmdArg(3, arg3, sizeof(arg3));
 	if (args > 3) GetCmdArg(4, arg4, sizeof(arg4));
 	else arg4 = "0";
-	new Float:val = (!!StringToInt(arg4) ? (Float:StringToInt(arg3)) : StringToFloat(arg3));
+	float val = (!!StringToInt(arg4) ? (view_as<float>(StringToInt(arg3))) : StringToFloat(arg3));
 	/**
 	 * target_name - stores the noun identifying the target(s)
 	 * target_list - array to store clients
 	 * target_count - variable to store number of clients
 	 * tn_is_ml - stores whether the noun must be translated
 	 */
-	new String:target_name[MAX_TARGET_LENGTH];
-	new target_list[MAXPLAYERS], target_count;
-	new bool:tn_is_ml;
+	char target_name[MAX_TARGET_LENGTH];
+	int target_list[MAXPLAYERS];
+	int target_count;
+	bool tn_is_ml;
 
 	if (arg1[0] == '#' && arg1[1] == '#')	//'##entindex' instead of target
 	{
@@ -312,11 +318,11 @@ public Action:Command_AddAttrib(client, args)
 		ReplyToTargetError(client, target_count);
 		return Plugin_Handled;
 	}
-	for (new i = 0; i < target_count; i++)
+	for (int i = 0; i < target_count; i++)
 	{
 		if (IsValidEntity(target_list[i]))
 		{
-			new bool:result = false;
+			bool result = false;
 			if (bydefidx)
 				result = TF2Attrib_SetByDefIndex(target_list[i], StringToInt(arg2), val);
 			else
@@ -333,12 +339,12 @@ public Action:Command_AddAttrib(client, args)
 		ReplyToCommand(client, "[SM] Added attrib '%s' val %s to %s", arg2, arg3, target_name);
 	return Plugin_Handled;
 }
-public Action:Command_AddWepAttrib(client, args)
+public Action Command_AddWepAttrib(int client, int args)
 {
-	decl String:arg1[32];
-	decl String:arg2[128];
-	decl String:arg3[32];
-	decl String:arg4[32];
+	char arg1[32];
+	char arg2[128];
+	char arg3[32];
+	char arg4[32];
 	if (args < 3)
 	{
 		ReplyToCommand(client, "[SM] Usage: sm_addattrib <target> <attrib> <val> [pass as int]");
@@ -350,8 +356,8 @@ public Action:Command_AddWepAttrib(client, args)
 	GetCmdArg(3, arg3, sizeof(arg3));
 	if (args > 3) GetCmdArg(4, arg4, sizeof(arg4));
 	else arg4 = "0";
-	new Float:val = (!!StringToInt(arg4) ? (Float:StringToInt(arg3)) : StringToFloat(arg3));
-	new bool:bydefidx = false;
+	float val = (!!StringToInt(arg4) ? (view_as<float>(StringToInt(arg3))) : StringToFloat(arg3));
+	bool bydefidx = false;
 	if (arg2[0] == '#')
 	{
 		strcopy(arg2, sizeof(arg2), arg2[1]);
@@ -363,9 +369,10 @@ public Action:Command_AddWepAttrib(client, args)
 	 * target_count - variable to store number of clients
 	 * tn_is_ml - stores whether the noun must be translated
 	 */
-	new String:target_name[MAX_TARGET_LENGTH];
-	new target_list[MAXPLAYERS], target_count;
-	new bool:tn_is_ml;
+	char target_name[MAX_TARGET_LENGTH];
+	int target_list[MAXPLAYERS];
+	int target_count;
+	bool tn_is_ml;
 
 	if ((target_count = ProcessTargetString(
 			arg1,
@@ -381,13 +388,13 @@ public Action:Command_AddWepAttrib(client, args)
 		ReplyToTargetError(client, target_count);
 		return Plugin_Handled;
 	}
-	for (new i = 0; i < target_count; i++)
+	for (int i = 0; i < target_count; i++)
 	{
 		if (IsValidClient(target_list[i]))
 		{
-			new wep = GetEntPropEnt(target_list[i], Prop_Send, "m_hActiveWeapon");
+			int wep = GetEntPropEnt(target_list[i], Prop_Send, "m_hActiveWeapon");
 			if (!IsValidEntity(wep)) continue;
-			new bool:result = (bydefidx ? TF2Attrib_SetByDefIndex(wep, StringToInt(arg2), val) : TF2Attrib_SetByName(wep, arg2, val));
+			bool result = (bydefidx ? TF2Attrib_SetByDefIndex(wep, StringToInt(arg2), val) : TF2Attrib_SetByName(wep, arg2, val));
 			if (target_count == 1)
 			{
 				ReplyToCommand(client, "[SM] AddAttrib wep returned %d", result);
@@ -400,11 +407,11 @@ public Action:Command_AddWepAttrib(client, args)
 		ReplyToCommand(client, "[SM] Added attrib '%s' val %s to active wep of %s", arg2, arg3, target_name);
 	return Plugin_Handled;
 }
-public Action:Command_GetAttrByName(client, args)
+public Action Command_GetAttrByName(int client, int args)
 {
-	decl String:arg1[32];
-	decl String:arg2[128];
-	decl String:arg3[32];
+	char arg1[32];
+	char arg2[128];
+	char arg3[32];
 	if (args < 2)
 	{
 		ReplyToCommand(client, "[SM] Usage: sm_getattr <target> <attrib> [p/w]");
@@ -413,7 +420,7 @@ public Action:Command_GetAttrByName(client, args)
 
 	GetCmdArg(1, arg1, sizeof(arg1));
 	GetCmdArg(2, arg2, sizeof(arg2));
-	new bool:bydefidx = false;
+	bool bydefidx = false;
 	if (arg2[0] == '#')
 	{
 		strcopy(arg2, sizeof(arg2), arg2[1]);
@@ -421,8 +428,8 @@ public Action:Command_GetAttrByName(client, args)
 	}
 	if (args > 2) GetCmdArg(3, arg3, sizeof(arg3));
 	else arg3 = "p";
-	new bool:usePlayer = arg3[0] != 'w';
-	new target = -1;
+	bool usePlayer = arg3[0] != 'w';
+	int target = -1;
 	if (arg1[0] == '#' && arg1[1] == '#')	//'##entindex' instead of target
 	{
 		target = StringToInt(arg1[2]);
@@ -430,7 +437,7 @@ public Action:Command_GetAttrByName(client, args)
 	else target = FindTarget(client, arg1, false, false);
 	if (!IsValidEntity(target)) return Plugin_Handled;
 
-	new wep = target;
+	int wep = target;
 	if (!usePlayer)
 	{
 		wep = GetEntPropEnt(target, Prop_Send, "m_hActiveWeapon");
@@ -441,26 +448,26 @@ public Action:Command_GetAttrByName(client, args)
 		}
 	}
 
-	new Address:pAttrib = (bydefidx ? TF2Attrib_GetByDefIndex(wep, StringToInt(arg2)) : TF2Attrib_GetByName(wep, arg2));
+	Address pAttrib = (bydefidx ? TF2Attrib_GetByDefIndex(wep, StringToInt(arg2)) : TF2Attrib_GetByName(wep, arg2));
 	lastAddr[client] = pAttrib;
-	if (Address:pAttrib < Address_MinimumValid)
+	if (view_as<Address>(pAttrib) < Address_MinimumValid)
 	{
 		ReplyToCommand(client, "[SM] GetAttrib got null attrib '%s' on %s%d", arg2, usePlayer ? "" : "active wep of ", target);//, target);
 		return Plugin_Handled;
 	}
-	new Float:result = TF2Attrib_GetValue(pAttrib);
-	new idx = TF2Attrib_GetDefIndex(pAttrib);
-	if (TF2Attrib_IsIntegerValue(idx)) result = float(_:result);
-	new Float:init;// = TF2Attrib_GetInitialValue(pAttrib);
-	if (TF2Attrib_IsIntegerValue(idx)) init = float(_:init);
-	ReplyToCommand(client, "[SM] GetAttrib got: %d %d ; %.4f, %.4f, %d, %d for attrib '%s' on %s%d", _:pAttrib, idx, result, init, TF2Attrib_GetRefundableCurrency(pAttrib), 0 /*TF2Attrib_GetIsSetBonus(pAttrib)*/, arg2, usePlayer ? "" : "active wep of ", target);//, target);
+	float result = TF2Attrib_GetValue(pAttrib);
+	int idx = TF2Attrib_GetDefIndex(pAttrib);
+	if (TF2Attrib_IsIntegerValue(idx)) result = float(view_as<int>(result));
+	float init;// = TF2Attrib_GetInitialValue(pAttrib);
+	if (TF2Attrib_IsIntegerValue(idx)) init = float(view_as<int>(init));
+	ReplyToCommand(client, "[SM] GetAttrib got: %d %d ; %.4f, %.4f, %d, %d for attrib '%s' on %s%d", view_as<int>(pAttrib), idx, result, init, TF2Attrib_GetRefundableCurrency(pAttrib), 0 /*TF2Attrib_GetIsSetBonus(pAttrib)*/, arg2, usePlayer ? "" : "active wep of ", target);//, target);
 	return Plugin_Handled;
 }
-public Action:Command_GetAttrByID(client, args)
+public Action Command_GetAttrByID(int client, int args)
 {
-	decl String:arg1[32];
-	decl String:arg2[128];
-	decl String:arg3[32];
+	char arg1[32];
+	char arg2[128];
+	char arg3[32];
 	if (args < 2)
 	{
 		ReplyToCommand(client, "[SM] Usage: sm_getattr <target> <attrib> [p/w]");
@@ -469,11 +476,11 @@ public Action:Command_GetAttrByID(client, args)
 
 	GetCmdArg(1, arg1, sizeof(arg1));
 	GetCmdArg(2, arg2, sizeof(arg2));
-	new index = StringToInt(arg2);
+	int index = StringToInt(arg2);
 	if (args > 2) GetCmdArg(3, arg3, sizeof(arg3));
 	else arg3 = "p";
-	new bool:usePlayer = arg3[0] != 'w';
-	new target = -1;
+	bool usePlayer = arg3[0] != 'w';
+	int target = -1;
 	if (arg1[0] == '#' && arg1[1] == '#')	//'##entindex' instead of target
 	{
 		target = StringToInt(arg1[2]);
@@ -481,7 +488,7 @@ public Action:Command_GetAttrByID(client, args)
 	else target = FindTarget(client, arg1, false, false);
 	if (!IsValidEntity(target)) return Plugin_Handled;
 
-	new wep = target;
+	int wep = target;
 	if (!usePlayer)
 	{
 		wep = GetEntPropEnt(target, Prop_Send, "m_hActiveWeapon");
@@ -492,25 +499,25 @@ public Action:Command_GetAttrByID(client, args)
 		}
 	}
 
-	new Address:pAttrib = TF2Attrib_GetByDefIndex(wep, index);
+	Address pAttrib = TF2Attrib_GetByDefIndex(wep, index);
 	lastAddr[client] = pAttrib;
-	if (Address:pAttrib < Address_MinimumValid)
+	if (view_as<Address>(pAttrib) < Address_MinimumValid)
 	{
 		ReplyToCommand(client, "[SM] GetAttrib got null attrib '%d' on %s%d", index, usePlayer ? "" : "active wep of ", target);//, target);
 		return Plugin_Handled;
 	}
-	new Float:result = TF2Attrib_GetValue(pAttrib);
-	new idx = TF2Attrib_GetDefIndex(pAttrib);
-	if (TF2Attrib_IsIntegerValue(idx)) result = float(_:result);
-	new Float:init;// = TF2Attrib_GetInitialValue(pAttrib);
-	if (TF2Attrib_IsIntegerValue(idx)) init = float(_:init);
-	ReplyToCommand(client, "[SM] GetAttrib got: %d %d ; %.4f, %.4f, %d, %d for attrib '%s' on %s%d", _:pAttrib, idx, result, init, TF2Attrib_GetRefundableCurrency(pAttrib), 0 /*TF2Attrib_GetIsSetBonus(pAttrib)*/, arg2, usePlayer ? "" : "active wep of ", target);//, target);
+	float result = TF2Attrib_GetValue(pAttrib);
+	int idx = TF2Attrib_GetDefIndex(pAttrib);
+	if (TF2Attrib_IsIntegerValue(idx)) result = float(view_as<int>(result));
+	float init;// = TF2Attrib_GetInitialValue(pAttrib);
+	if (TF2Attrib_IsIntegerValue(idx)) init = float(view_as<int>(init));
+	ReplyToCommand(client, "[SM] GetAttrib got: %08X %d ; %.4f, %.4f, %d, %d for attrib '%s' on %s%d", view_as<int>(pAttrib), idx, result, init, TF2Attrib_GetRefundableCurrency(pAttrib), 0 /*TF2Attrib_GetIsSetBonus(pAttrib)*/, arg2, usePlayer ? "" : "active wep of ", target);//, target);
 	return Plugin_Handled;
 }
-public Action:Command_GetAttrs(client, args)
+public Action Command_GetAttrs(int client, int args)
 {
-	decl String:arg1[64];
-	decl String:arg3[32];
+	char arg1[64];
+	char arg3[32];
 	if (args < 1)
 	{
 		ReplyToCommand(client, "[SM] Usage: sm_getattrs <target> [p/w]");
@@ -520,8 +527,8 @@ public Action:Command_GetAttrs(client, args)
 	GetCmdArg(1, arg1, sizeof(arg1));
 	if (args > 1) GetCmdArg(2, arg3, sizeof(arg3));
 	else arg3 = "p";
-	new bool:usePlayer = arg3[0] != 'w';
-	new target = -1;
+	bool usePlayer = arg3[0] != 'w';
+	int target = -1;
 	if (arg1[0] == '#' && arg1[1] == '#')	//'##entindex' instead of target
 	{
 		target = StringToInt(arg1[2]);
@@ -529,7 +536,7 @@ public Action:Command_GetAttrs(client, args)
 	else target = FindTarget(client, arg1, false, false);
 	if (!IsValidEntity(target)) return Plugin_Handled;
 
-	new wep = target;
+	int wep = target;
 	if (!usePlayer)
 	{
 		wep = GetEntPropEnt(target, Prop_Send, "m_hActiveWeapon");
@@ -540,21 +547,41 @@ public Action:Command_GetAttrs(client, args)
 		}
 	}
 
-	new attriblist[16];
+	int attriblist[16];
 	arg1 = "[SM] ListDefIndices:";
-	new count = TF2Attrib_ListDefIndices(wep, attriblist);
-	for (new i = 0; i < count; i++)
+	int count = TF2Attrib_ListDefIndices(wep, attriblist);
+	for (int i = 0; i < count; i++)
 	{
 		Format(arg1, sizeof(arg1), "%s %d", arg1, attriblist[i]);
 	}
 	ReplyToCommand(client, "%s on %s%d", arg1, usePlayer ? "" : "active wep of ", target);//, target);
+	float valuelist[16];
+	int count_static = TF2Attrib_GetSOCAttribs(wep, attriblist, valuelist);
+	if (count_static > 0)
+	{
+		ReplyToCommand(client, "SOC:");
+	}
+	for (int i = 0; i < count_static; i++)
+	{
+		ReplyToCommand(client, "%d: %.4f %d", attriblist[i], valuelist[i], view_as<int>(valuelist[i]));
+	}
+	int iDefIndex = GetEntProp(wep, Prop_Send, "m_iItemDefinitionIndex");
+	count_static = TF2Attrib_GetStaticAttribs(iDefIndex, attriblist, valuelist);
+	if (count_static > 0)
+	{
+		ReplyToCommand(client, "Static:");
+	}
+	for (int i = 0; i < count_static; i++)
+	{
+		ReplyToCommand(client, "%d: %.4f %d", attriblist[i], valuelist[i], view_as<int>(valuelist[i]));
+	}
 	return Plugin_Handled;
 }
-public Action:SetValueStuff(client, args)
+public Action SetValueStuff(int client, int args)
 {
-	decl String:arg1[32];
-	decl String:arg2[32];
-	decl String:arg3[32];
+	char arg1[32];
+	char arg2[32];
+	char arg3[32];
 	if (args < 3)
 	{
 		ReplyToCommand(client, "[SM] Usage: sm_attrset <address> <type> <val>");
@@ -563,13 +590,13 @@ public Action:SetValueStuff(client, args)
 	GetCmdArg(1, arg1, sizeof(arg1));
 	GetCmdArg(2, arg2, sizeof(arg2));
 	GetCmdArg(3, arg3, sizeof(arg3));
-	new Address:addr = Address:StringToInt(arg1);
+	Address addr = view_as<Address>(StringToInt(arg1));
 	if (addr != lastAddr[client] || addr < Address_MinimumValid)
 	{
 		ReplyToCommand(client, "[SM] Unsafe address");
 		return Plugin_Handled;
 	}
-	new type = StringToInt(arg2);
+	int type = StringToInt(arg2);
 	switch (type)
 	{
 		case 1: TF2Attrib_SetDefIndex(addr, StringToInt(arg3));
@@ -581,7 +608,7 @@ public Action:SetValueStuff(client, args)
 	ReplyToCommand(client, "[SM] Set %d on %d to %s", type, addr, arg3);
 	return Plugin_Handled;
 }
-stock bool:IsValidClient(client)
+stock bool IsValidClient(int client)
 {
 	if (client <= 0 || client > MaxClients) return false;
 	return IsClientInGame(client);
