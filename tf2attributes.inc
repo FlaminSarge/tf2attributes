@@ -169,23 +169,23 @@ native int TF2Attrib_ListDefIndices(int iEntity, int[] iDefIndices);
  *
  * @param iItemDefIndex		Item definition index (e.g. 7 for Shovel) to get static attribute list from.
  * @param iAttribIndices	Array (max size 16) of attribute definition indices found on the item definition.
- * @param iAttribValues		Array (max size 16) of attribute values found on the item definition, corresponding to the indices.
+ * @param flAttribValues	Array (max size 16) of attribute values found on the item definition, corresponding to the indices.
  *
  * @return					The number of attributes found on the item definition's static attribute list, or -1 if no schema or item definition found.
  */
-native int TF2Attrib_GetStaticAttribs(int iItemDefIndex, int[] iAttribIndices, float[] iAttribValues);
+native int TF2Attrib_GetStaticAttribs(int iItemDefIndex, int[] iAttribIndices, float[] flAttribValues);
 
 /**
  * Returns arrays containing the item server (SOC) attributes and their values present on an item definition.
  *
  * @param iEntity			Entity index to get the item server attribute list from.
  * @param iAttribIndices	Array (max size 16) of attribute definition indices found.
- * @param iAttribValues		Array (max size 16) of attribute values found, corresponding to the indices.
+ * @param flAttribValues	Array (max size 16) of attribute values found, corresponding to the indices.
  *
  * @return					The number of attributes found on the item's SOC attribute list, or -1 if some error happened.
  * @error					Invalid entity index passed.
  */
-native int TF2Attrib_GetSOCAttribs(int iEntity, int[] iAttribIndices, float[] iAttribValues);
+native int TF2Attrib_GetSOCAttribs(int iEntity, int[] iAttribIndices, float[] flAttribValues);
 
 /**
  * Gets whether an attribute is stored as an integer or as a float.
