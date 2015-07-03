@@ -97,7 +97,7 @@ public OnPluginStart()
 	hSDKGetItemDefinition = EndPrepSDKCall();
 	if (hSDKGetItemDefinition == INVALID_HANDLE)
 	{
-		SetFailState("Could not initialize call to CEconItemSchema::GetItemDefinition");
+		LogError("Could not initialize call to CEconItemSchema::GetItemDefinition");
 		bPluginReady = false;
 	}
 
@@ -291,6 +291,10 @@ public Native_GetStaticAttribs(Handle:plugin, numParams)
 	new iItemDefIndex = GetNativeCell(1);
 	new Address:pSchema = SDKCall(hSDKSchema);
 	if (pSchema == Address_Null) return -1;
+	if (hSDKGetItemDefinition == INVALID_HANDLE)
+	{
+		return ThrowNativeError(SP_ERROR_NATIVE, "TF2Attrib_GetStaticAttribs: Could not find call to CEconItemSchema::GetItemDefinition");
+	}
 	new Address:pItemDef = SDKCall(hSDKGetItemDefinition, pSchema, iItemDefIndex);
 	if (!IsValidAddress(pItemDef)) return -1;
 	new iAttribIndices[16], iAttribValues[16];
@@ -310,6 +314,10 @@ stock GetSOCAttribs(iEntity, iAttribIndices[], iAttribValues[])
 		return -1;
 	}
 	pEconItemView += Address:iCEIVOffset;
+	if (hSDKGetSOCData == INVALID_HANDLE)
+	{
+		return ThrowNativeError(SP_ERROR_NATIVE, "TF2Attrib_GetSOCAttribs: Could not find call to CEconItemView::GetSOCData");
+	}
 	new Address:pEconItem = SDKCall(hSDKGetSOCData, pEconItemView);
 	if (!IsValidAddress(pEconItem))
 	{
