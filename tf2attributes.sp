@@ -314,10 +314,7 @@ stock GetSOCAttribs(iEntity, iAttribIndices[], iAttribValues[])
 		return -1;
 	}
 	pEconItemView += Address:iCEIVOffset;
-	if (hSDKGetSOCData == INVALID_HANDLE)
-	{
-		return ThrowNativeError(SP_ERROR_NATIVE, "TF2Attrib_GetSOCAttribs: Could not find call to CEconItemView::GetSOCData");
-	}
+
 	new Address:pEconItem = SDKCall(hSDKGetSOCData, pEconItemView);
 	if (!IsValidAddress(pEconItem))
 	{
@@ -352,6 +349,10 @@ public Native_GetSOCAttribs(Handle:plugin, numParams)
 	if (!IsValidEntity(iEntity))
 	{
 		return ThrowNativeError(SP_ERROR_NATIVE, "TF2Attrib_GetSOCAttribs: Invalid entity index %d passed", iEntity);
+	}
+	if (hSDKGetSOCData == INVALID_HANDLE)
+	{
+		return ThrowNativeError(SP_ERROR_NATIVE, "TF2Attrib_GetSOCAttribs: Could not find call to CEconItemView::GetSOCData");
 	}
 	//maybe move some address stuff to here from the stock, but for now it's okay
 	new iAttribIndices[16], iAttribValues[16];
@@ -821,7 +822,7 @@ struct CEconItemAttributeDefinition
 	BYTE blank,
 	DWORD apply_tag_to_item_definition,	//52
 	DWORD unknown
-	
+
 };*/
 /*class CEconItemAttribute
 {
