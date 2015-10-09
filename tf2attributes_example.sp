@@ -266,7 +266,6 @@ public Action Command_AddAttrib(int client, int args)
 	char arg1[32];
 	char arg2[128];
 	char arg3[32];
-	char arg4[32];
 	if (args < 3)
 	{
 		ReplyToCommand(client, "[SM] Usage: sm_addattrib <target> <attrib> <val> [pass as int]");
@@ -275,16 +274,16 @@ public Action Command_AddAttrib(int client, int args)
 
 	GetCmdArg(1, arg1, sizeof(arg1));
 	GetCmdArg(2, arg2, sizeof(arg2));
+	GetCmdArg(3, arg3, sizeof(arg3));
+	bool passint = false;
+	if (args > 3) passint = true;
+	float val = (passint ? (view_as<float>(StringToInt(arg3))) : StringToFloat(arg3));
 	bool bydefidx = false;
 	if (arg2[0] == '#')
 	{
 		strcopy(arg2, sizeof(arg2), arg2[1]);
 		bydefidx = true;
 	}
-	GetCmdArg(3, arg3, sizeof(arg3));
-	if (args > 3) GetCmdArg(4, arg4, sizeof(arg4));
-	else arg4 = "0";
-	float val = (!!StringToInt(arg4) ? (view_as<float>(StringToInt(arg3))) : StringToFloat(arg3));
 	/**
 	 * target_name - stores the noun identifying the target(s)
 	 * target_list - array to store clients
@@ -334,9 +333,9 @@ public Action Command_AddAttrib(int client, int args)
 		}
 	}
 	if (tn_is_ml)
-		ReplyToCommand(client, "[SM] Added attrib '%s' val %s to %t", arg2, arg3, target_name);
+		ReplyToCommand(client, "[SM] Added attrib '%s' val %s to %t%s", arg2, arg3, target_name, passint ? " as int" : "");
 	else
-		ReplyToCommand(client, "[SM] Added attrib '%s' val %s to %s", arg2, arg3, target_name);
+		ReplyToCommand(client, "[SM] Added attrib '%s' val %s to %s%s", arg2, arg3, target_name, passint ? " as int" : "");
 	return Plugin_Handled;
 }
 public Action Command_AddWepAttrib(int client, int args)
@@ -344,7 +343,6 @@ public Action Command_AddWepAttrib(int client, int args)
 	char arg1[32];
 	char arg2[128];
 	char arg3[32];
-	char arg4[32];
 	if (args < 3)
 	{
 		ReplyToCommand(client, "[SM] Usage: sm_addattrib <target> <attrib> <val> [pass as int]");
@@ -354,9 +352,9 @@ public Action Command_AddWepAttrib(int client, int args)
 	GetCmdArg(1, arg1, sizeof(arg1));
 	GetCmdArg(2, arg2, sizeof(arg2));
 	GetCmdArg(3, arg3, sizeof(arg3));
-	if (args > 3) GetCmdArg(4, arg4, sizeof(arg4));
-	else arg4 = "0";
-	float val = (!!StringToInt(arg4) ? (view_as<float>(StringToInt(arg3))) : StringToFloat(arg3));
+	bool passint = false;
+	if (args > 3) passint = true;
+	float val = (passint ? (view_as<float>(StringToInt(arg3))) : StringToFloat(arg3));
 	bool bydefidx = false;
 	if (arg2[0] == '#')
 	{
@@ -402,9 +400,9 @@ public Action Command_AddWepAttrib(int client, int args)
 		}
 	}
 	if (tn_is_ml)
-		ReplyToCommand(client, "[SM] Added attrib '%s' val %s to active wep of %t", arg2, arg3, target_name);
+		ReplyToCommand(client, "[SM] Added attrib '%s' val %s to active wep of %t%s", arg2, arg3, target_name, passint ? " as int" : "");
 	else
-		ReplyToCommand(client, "[SM] Added attrib '%s' val %s to active wep of %s", arg2, arg3, target_name);
+		ReplyToCommand(client, "[SM] Added attrib '%s' val %s to active wep of %s%s", arg2, arg3, target_name, passint ? " as int" : "");
 	return Plugin_Handled;
 }
 public Action Command_GetAttrByName(int client, int args)
