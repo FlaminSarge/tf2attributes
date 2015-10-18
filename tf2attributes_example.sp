@@ -412,7 +412,7 @@ public Action Command_GetAttrByName(int client, int args)
 	char arg3[32];
 	if (args < 2)
 	{
-		ReplyToCommand(client, "[SM] Usage: sm_getattr <target> <attrib> [p/w]");
+		ReplyToCommand(client, "[SM] Usage: sm_getattrib <target> <attrib> [p/w]");
 		return Plugin_Handled;
 	}
 
@@ -448,7 +448,7 @@ public Action Command_GetAttrByName(int client, int args)
 
 	Address pAttrib = (bydefidx ? TF2Attrib_GetByDefIndex(wep, StringToInt(arg2)) : TF2Attrib_GetByName(wep, arg2));
 	lastAddr[client] = pAttrib;
-	if (view_as<Address>(pAttrib) < Address_MinimumValid)
+	if (!IsValidAddress(view_as<Address>(pAttrib)))
 	{
 		ReplyToCommand(client, "[SM] GetAttrib got null attrib '%s' on %s%d", arg2, usePlayer ? "" : "active wep of ", target);//, target);
 		return Plugin_Handled;
@@ -468,7 +468,7 @@ public Action Command_GetAttrByID(int client, int args)
 	char arg3[32];
 	if (args < 2)
 	{
-		ReplyToCommand(client, "[SM] Usage: sm_getattr <target> <attrib> [p/w]");
+		ReplyToCommand(client, "[SM] Usage: sm_getattrib <target> <attrib> [p/w]");
 		return Plugin_Handled;
 	}
 
@@ -499,7 +499,7 @@ public Action Command_GetAttrByID(int client, int args)
 
 	Address pAttrib = TF2Attrib_GetByDefIndex(wep, index);
 	lastAddr[client] = pAttrib;
-	if (view_as<Address>(pAttrib) < Address_MinimumValid)
+	if (!IsValidAddress(view_as<Address>(pAttrib)))
 	{
 		ReplyToCommand(client, "[SM] GetAttrib got null attrib '%d' on %s%d", index, usePlayer ? "" : "active wep of ", target);//, target);
 		return Plugin_Handled;
@@ -592,7 +592,7 @@ public Action SetValueStuff(int client, int args)
 	GetCmdArg(2, arg2, sizeof(arg2));
 	GetCmdArg(3, arg3, sizeof(arg3));
 	Address addr = view_as<Address>(StringToInt(arg1));
-	if (addr != lastAddr[client] || addr < Address_MinimumValid)
+	if (addr != lastAddr[client] || !IsValidAddress(addr))
 	{
 		ReplyToCommand(client, "[SM] Unsafe address");
 		return Plugin_Handled;
@@ -613,4 +613,10 @@ stock bool IsValidClient(int client)
 {
 	if (client <= 0 || client > MaxClients) return false;
 	return IsClientInGame(client);
+}
+stock bool IsValidAddress(Address pAddress)
+{
+	if (pAddress == Address_Null)	//yes the other one overlaps this but w/e
+		return false;
+	return ((pAddress & view_as<Address>(0x7FFFFFFF)) >= Address_MinimumValid);
 }
