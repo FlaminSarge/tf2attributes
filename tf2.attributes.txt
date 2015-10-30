@@ -13,9 +13,9 @@
 			}
 			"CEconItemView::GetItemDefinition"
 			{
-				"windows"	"4"
-				"linux"		"5"
-				"mac"		"5"
+				"windows"	"8"
+				"linux"		"9"
+				"mac"		"9"
 			}
 		}
 		"Signatures"
@@ -58,7 +58,7 @@
 			"CEconItemSchema::GetAttributeDefinitionByName"	//const char*, returns CEconItemAttributeDefinition
 			{
 				"library"			"server"
-				"windows"			"\x55\x8B\xEC\x83\xEC\x2A\x53\x8B\xD9\x8B\x0D\x2A\x2A\x2A\x2A\x56\x33\xF6\x89\x75\xE8\x89\x75\xEC\x8B\x41\x08\x89\x75\xF4\x89\x75\xF8\x57"
+				"windows"			"\x55\x8B\xEC\x83\xEC\x18\x83\x7D\x08\x00\x53\x56\x57\x8B\xD9\x75\x2A\x33\xC0\x5F"
 				"linux"				"@_ZN15CEconItemSchema28GetAttributeDefinitionByNameEPKc"
 				"mac"				"@_ZN15CEconItemSchema28GetAttributeDefinitionByNameEPKc"
 			}
