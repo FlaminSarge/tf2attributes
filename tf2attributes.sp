@@ -327,7 +327,7 @@ stock GetSOCAttribs(iEntity, iAttribIndices[], iAttribValues[])
 	}
 	new Address:pCustomData = Address:LoadFromAddress(pEconItem+Address:44, NumberType_Int32);
 	new iCount = (LoadFromAddress(pEconItem+Address:31, NumberType_Int8) >> 2) & 1;	//(CEconItem+31 & 4) != 0
-	if (pCustomData >= Address_MinimumValid)
+	if (IsValidAddress(pCustomData))
 	{
 		iCount = LoadFromAddress(pCustomData + Address:12, NumberType_Int32);
 	}
@@ -335,7 +335,7 @@ stock GetSOCAttribs(iEntity, iAttribIndices[], iAttribValues[])
 	new Address:pAttribVal = pEconItem+Address:40;
 	for (new i = 0; i < iCount; ++i)
 	{
-		if (pCustomData >= Address_MinimumValid)
+		if (IsValidAddress(pCustomData))
 		{
 			pAttribDef = Address:(LoadFromAddress(pCustomData, NumberType_Int32) + 8 * i);
 			pAttribVal = Address:(LoadFromAddress(pCustomData, NumberType_Int32) + 8 * i + 4);
@@ -789,11 +789,20 @@ public Native_ListIDs(Handle:plugin, numParams)
 	return iNumAttribs;
 }
 
+//TODO Stop using Address_MinimumValid once verified that logic still works without it
 stock bool IsValidAddress(Address pAddress)
 {
-	if (pAddress == Address_Null)	//yes the other one overlaps this but w/e
+	static Address Address_MinimumValid = Address:0x10000;
+	if (pAddress == Address_Null)
 		return false;
-	return ((pAddress & view_as<Address>(0x7FFFFFFF)) >= Address_MinimumValid);
+	return unsigned_compare(view_as<int>(pAddress), view_as<int>(Address_MinimumValid)) >= 0;
+}
+stock int unsigned_compare(int a, int b) {
+	if (a == b)
+		return 0;
+	if ((a >>> 31) == (b >>> 31))
+		return ((a & 0x7FFFFFFF) > (b & 0x7FFFFFFF)) ? 1 : -1;
+	return ((a >>> 31) > (b >>> 31)) ? 1 : -1;
 }
 /*
 struct CEconItemAttributeDefinition
