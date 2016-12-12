@@ -5,7 +5,7 @@
 
 #define PLUGIN_NAME		"[TF2] TF2Attributes"
 #define PLUGIN_AUTHOR		"FlaminSarge"
-#define PLUGIN_VERSION		"1.2.1" //as of July 02, 2015
+#define PLUGIN_VERSION		"1.3.0"
 #define PLUGIN_CONTACT		"http://forums.alliedmods.net/showthread.php?t=210221"
 #define PLUGIN_DESCRIPTION	"Functions to add/get attributes for TF2 players/items"
 
@@ -278,12 +278,12 @@ public Native_IsIntegerValue(Handle:plugin, numParams)
 	return Internal_IsIntegerValue(iDefIndex);
 }
 
-stock GetStaticAttribs(Address:pItemDef, iAttribIndices[], iAttribValues[])
+stock GetStaticAttribs(Address:pItemDef, iAttribIndices[], iAttribValues[], size = 16)
 {
 	if (!IsValidAddress(pItemDef)) return 0;	//...-1 maybe?
 	new iNumAttribs = LoadFromAddress(pItemDef + Address:32, NumberType_Int32);
 	new Address:pAttribList = Address:LoadFromAddress(pItemDef + Address:20, NumberType_Int32);
-	for (new i = 0; i < iNumAttribs; i++)	//THIS IS HOW YOU GET THE ATTRIBUTES ON AN ITEMDEF!
+	for (new i = 0; i < iNumAttribs && i < size; i++)	//THIS IS HOW YOU GET THE ATTRIBUTES ON AN ITEMDEF!
 	{
 		iAttribIndices[i] = LoadFromAddress(pAttribList + Address:(i * 8), NumberType_Int16);
 		iAttribValues[i] = LoadFromAddress(pAttribList + Address:(i * 8 + 4), NumberType_Int32);
@@ -294,6 +294,15 @@ stock GetStaticAttribs(Address:pItemDef, iAttribIndices[], iAttribValues[])
 public Native_GetStaticAttribs(Handle:plugin, numParams)
 {
 	new iItemDefIndex = GetNativeCell(1);
+	new size = 16;
+	if (numParams >= 4)
+	{
+		size = GetNativeCell(4);
+		if (size <= 0)
+		{
+			return ThrowNativeError(SP_ERROR_NATIVE, "TF2Attrib_GetStaticAttribs: Array size (iMaxLen=%d) must be greater than 0", size);
+		}
+	}
 	new Address:pSchema = SDKCall(hSDKSchema);
 	if (pSchema == Address_Null) return -1;
 	if (hSDKGetItemDefinition == INVALID_HANDLE)
@@ -302,14 +311,14 @@ public Native_GetStaticAttribs(Handle:plugin, numParams)
 	}
 	new Address:pItemDef = SDKCall(hSDKGetItemDefinition, pSchema, iItemDefIndex);
 	if (!IsValidAddress(pItemDef)) return -1;
-	new iAttribIndices[16], iAttribValues[16];
-	new iCount = GetStaticAttribs(pItemDef, iAttribIndices, iAttribValues);
-	SetNativeArray(2, iAttribIndices, 16);
-	SetNativeArray(3, iAttribValues, 16);	//cast to float on inc side
+	new iAttribIndices[size], iAttribValues[size];
+	new iCount = GetStaticAttribs(pItemDef, iAttribIndices, iAttribValues, size);
+	SetNativeArray(2, iAttribIndices, size);
+	SetNativeArray(3, iAttribValues, size);	//cast to float on inc side
 	return iCount;
 }
 
-stock GetSOCAttribs(iEntity, iAttribIndices[], iAttribValues[])
+stock GetSOCAttribs(iEntity, iAttribIndices[], iAttribValues[], size = 16)
 {
 	new iCEIVOffset = GetEntSendPropOffs(iEntity, "m_Item", true);
 	if (iCEIVOffset <= 0) return -1;
@@ -333,7 +342,7 @@ stock GetSOCAttribs(iEntity, iAttribIndices[], iAttribValues[])
 	}
 	new Address:pAttribDef = pEconItem+Address:36;
 	new Address:pAttribVal = pEconItem+Address:40;
-	for (new i = 0; i < iCount; ++i)
+	for (new i = 0; i < iCount && i < size; ++i)
 	{
 		if (IsValidAddress(pCustomData))
 		{
@@ -351,19 +360,28 @@ stock GetSOCAttribs(iEntity, iAttribIndices[], iAttribValues[])
 public Native_GetSOCAttribs(Handle:plugin, numParams)
 {
 	new iEntity = GetNativeCell(1);
+	new size = 16;
+	if (numParams >= 4)
+	{
+		size = GetNativeCell(4);
+		if (size <= 0)
+		{
+			return ThrowNativeError(SP_ERROR_NATIVE, "TF2Attrib_GetSOCAttribs: Array size (iMaxLen=%d) must be greater than 0", size);
+		}
+	}
 	if (!IsValidEntity(iEntity))
 	{
-		return ThrowNativeError(SP_ERROR_NATIVE, "TF2Attrib_GetSOCAttribs: Invalid entity index %d passed", iEntity);
+		return ThrowNativeError(SP_ERROR_NATIVE, "TF2Attrib_GetSOCAttribs: Invalid entity (iEntity=%d) passed", iEntity);
 	}
 	if (hSDKGetSOCData == INVALID_HANDLE)
 	{
 		return ThrowNativeError(SP_ERROR_NATIVE, "TF2Attrib_GetSOCAttribs: Could not find call to CEconItemView::GetSOCData");
 	}
 	//maybe move some address stuff to here from the stock, but for now it's okay
-	new iAttribIndices[16], iAttribValues[16];
-	new iCount = GetSOCAttribs(iEntity, iAttribIndices, iAttribValues);
-	SetNativeArray(2, iAttribIndices, 16);
-	SetNativeArray(3, iAttribValues, 16);	//cast to float on inc side
+	new iAttribIndices[size], iAttribValues[size];
+	new iCount = GetSOCAttribs(iEntity, iAttribIndices, iAttribValues, size);
+	SetNativeArray(2, iAttribIndices, size);
+	SetNativeArray(3, iAttribValues, size);	//cast to float on inc side
 	return iCount;
 }
 
@@ -372,7 +390,7 @@ public Native_SetAttrib(Handle:plugin, numParams)
 	new entity = GetNativeCell(1);
 	if (!IsValidEntity(entity))
 	{
-		return ThrowNativeError(SP_ERROR_NATIVE, "TF2Attrib_SetByName: Invalid entity index %d passed", entity);
+		return ThrowNativeError(SP_ERROR_NATIVE, "TF2Attrib_SetByName: Invalid entity (iEntity=%d) passed", entity);
 //		return;
 	}
 	decl String:strAttrib[128];	//"counts as assister is some kind of pet this update is going to be awesome" is 73 characters. Valve... Valve.
@@ -414,7 +432,7 @@ public Native_SetAttribByID(Handle:plugin, numParams)
 	new entity = GetNativeCell(1);
 	if (!IsValidEntity(entity))
 	{
-		return ThrowNativeError(SP_ERROR_NATIVE, "TF2Attrib_SetByDefIndex: Invalid entity index %d passed", entity);
+		return ThrowNativeError(SP_ERROR_NATIVE, "TF2Attrib_SetByDefIndex: Invalid entity (iEntity=%d) passed", entity);
 //		return;
 	}
 	new iAttrib = GetNativeCell(2);
@@ -454,7 +472,7 @@ public Native_GetAttrib(Handle:plugin, numParams)
 	new entity = GetNativeCell(1);
 	if (!IsValidEntity(entity))
 	{
-		return ThrowNativeError(SP_ERROR_NATIVE, "TF2Attrib_GetByName: Invalid entity index %d passed", entity);
+		return ThrowNativeError(SP_ERROR_NATIVE, "TF2Attrib_GetByName: Invalid entity (iEntity=%d) passed", entity);
 //		return;
 	}
 	decl String:strAttrib[128];
@@ -487,7 +505,7 @@ public Native_GetAttribByID(Handle:plugin, numParams)
 	new entity = GetNativeCell(1);
 	if (!IsValidEntity(entity))
 	{
-		return ThrowNativeError(SP_ERROR_NATIVE, "TF2Attrib_GetByDefIndex: Invalid entity index %d passed", entity);
+		return ThrowNativeError(SP_ERROR_NATIVE, "TF2Attrib_GetByDefIndex: Invalid entity (iEntity=%d) passed", entity);
 //		return;
 	}
 	new iDefIndex = GetNativeCell(2);
@@ -511,7 +529,7 @@ public Native_Remove(Handle:plugin, numParams)
 	new entity = GetNativeCell(1);
 	if (!IsValidEntity(entity))
 	{
-		ThrowNativeError(SP_ERROR_NATIVE, "TF2Attrib_RemoveByName: Invalid entity index %d passed", entity);
+		ThrowNativeError(SP_ERROR_NATIVE, "TF2Attrib_RemoveByName: Invalid entity (iEntity=%d) passed", entity);
 		return false;
 		// return;
 	}
@@ -561,7 +579,7 @@ public Native_RemoveByID(Handle:plugin, numParams)
 	new entity = GetNativeCell(1);
 	if (!IsValidEntity(entity))
 	{
-		ThrowNativeError(SP_ERROR_NATIVE, "TF2Attrib_RemoveByDefIndex: Invalid entity index %d passed", entity);
+		ThrowNativeError(SP_ERROR_NATIVE, "TF2Attrib_RemoveByDefIndex: Invalid entity (iEntity=%d) passed", entity);
 		return false;
 		// return;
 	}
@@ -610,7 +628,7 @@ public Native_RemoveAll(Handle:plugin, numParams)
 	new entity = GetNativeCell(1);
 	if (!IsValidEntity(entity))
 	{
-		ThrowNativeError(SP_ERROR_NATIVE, "TF2Attrib_RemoveAll: Invalid entity index %d passed", entity);
+		ThrowNativeError(SP_ERROR_NATIVE, "TF2Attrib_RemoveAll: Invalid entity (iEntity=%d) passed", entity);
 		return false;
 		// return;
 	}
@@ -746,7 +764,7 @@ public Native_ClearCache(Handle:plugin, numParams)
 	new entity = GetNativeCell(1);
 	if (!IsValidEntity(entity))
 	{
-		ThrowNativeError(SP_ERROR_NATIVE, "TF2Attrib_ClearCache: Invalid entity index %d passed", entity);
+		ThrowNativeError(SP_ERROR_NATIVE, "TF2Attrib_ClearCache: Invalid entity (iEntity=%d) passed", entity);
 		return false;
 	}
 	return ClearAttributeCache(entity);
@@ -755,11 +773,20 @@ public Native_ClearCache(Handle:plugin, numParams)
 public Native_ListIDs(Handle:plugin, numParams)
 {
 	new entity = GetNativeCell(1);
+	new size = 16;
+	if (numParams >= 3)
+	{
+		size = GetNativeCell(3);
+		if (size <= 0)
+		{
+			ThrowNativeError(SP_ERROR_NATIVE, "TF2Attrib_ListDefIndices: Array size (iMaxLen=%d) must be greater than 0", size);
+			return -1;
+		}
+	}
 	if (!IsValidEntity(entity))
 	{
-		ThrowNativeError(SP_ERROR_NATIVE, "TF2Attrib_ListDefIndices: Invalid entity index %d passed", entity);
+		ThrowNativeError(SP_ERROR_NATIVE, "TF2Attrib_ListDefIndices: Invalid entity (iEntity=%d) passed", entity);
 		return -1;
-		// return;
 	}
 
 	new offs = GetEntSendPropOffs(entity, "m_AttributeList", true);
@@ -780,12 +807,12 @@ public Native_ListIDs(Handle:plugin, numParams)
 	new Address:pAttribList = Address:LoadFromAddress(pEntity + Address:(offs + 4), NumberType_Int32);
 	if (!IsValidAddress(pAttribList)) return -1;
 	new iNumAttribs = LoadFromAddress(pEntity + Address:(offs + 16), NumberType_Int32);
-	new iAttribIndices[16];
-	for (new i = 0; i < iNumAttribs; i++)	//THIS IS HOW YOU GET THE ATTRIBUTES ON AN ITEM!
+	new iAttribIndices[size];
+	for (new i = 0; i < iNumAttribs && i < size; i++)	//THIS IS HOW YOU GET THE ATTRIBUTES ON AN ITEM!
 	{
 		iAttribIndices[i] = LoadFromAddress(pAttribList + Address:(i * 16 + 4), NumberType_Int16);
 	}
-	SetNativeArray(2, iAttribIndices, 16);
+	SetNativeArray(2, iAttribIndices, size);
 	return iNumAttribs;
 }
 
