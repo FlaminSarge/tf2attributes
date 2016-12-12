@@ -169,7 +169,12 @@ public OnPluginStart()
 	PrepSDKCall_SetFromConf(hGameConf, SDKConf_Signature, "CAttributeList::SetRuntimeAttributeValue");
 	PrepSDKCall_AddParameter(SDKType_PlainOldData, SDKPass_Plain);
 	PrepSDKCall_AddParameter(SDKType_Float, SDKPass_Plain);
-	PrepSDKCall_SetReturnInfo(SDKType_PlainOldData, SDKPass_Plain); //Apparently there's no return, but this is nonzero if the attribute is added successfully so let's try it
+	//PrepSDKCall_SetReturnInfo(SDKType_PlainOldData, SDKPass_Plain);
+	//Apparently there's no return, so avoid setting return info, but the 'return' is nonzero if the attribute is added successfully
+	//Just a note, the above SDKCall returns ((entindex + 4) * 4) | 0xA000), and you can AND it with 0x1FFF to get back the entindex if you want, though it's pointless)
+	//I don't know any other specifics, such as if the highest 3 bits actually matter
+	//And I don't know what happens when you hit ent index 2047
+
 	hSDKSetRuntimeValue = EndPrepSDKCall();
 	if (hSDKSetRuntimeValue == INVALID_HANDLE)
 	{
@@ -207,7 +212,7 @@ public OnPluginStart()
 		bPluginReady = false;
 	}
 
-	CreateConVar("tf2attributes_version", PLUGIN_VERSION, "TF2Attributes version number", FCVAR_NOTIFY|FCVAR_PLUGIN);
+	CreateConVar("tf2attributes_version", PLUGIN_VERSION, "TF2Attributes version number", FCVAR_NOTIFY);
 //	Call_StartForward(hPluginReady);
 //	Call_Finish();
 	g_bPluginReady = bPluginReady;	//I really never asked for this.
@@ -391,10 +396,8 @@ public Native_SetAttrib(Handle:plugin, numParams)
 	{
 		return ThrowNativeError(SP_ERROR_NATIVE, "TF2Attrib_SetByName: Attribute '%s' not valid", strAttrib);
 	}
-	new bool:bSuccess = !!SDKCall(hSDKSetRuntimeValue, pEntity+Address:offs, pAttribDef, flVal);
-	//Just a note, the above SDKCall returns ((entindex + 4) * 4) | 0xA000), and you can AND it with 0x1FFF to get back the entindex if you want, though it's pointless)
-	//I don't know any other specifics, such as if the highest 3 bits actually matter
-	//And I don't know what happens when you hit ent index 2047
+	SDKCall(hSDKSetRuntimeValue, pEntity+Address:offs, pAttribDef, flVal);
+	return true;
 
 //	ClearAttributeCache(GetEntPropEnt(entity, Prop_Send, "m_hOwnerEntity"));
 //	decl String:strClassname[64];
@@ -404,8 +407,6 @@ public Native_SetAttrib(Handle:plugin, numParams)
 //		new client = GetEntPropEnt(entity, Prop_Send, "m_hOwnerEntity");
 //		if (client > 0 && client <= MaxClients && IsClientInGame(client)) ClearAttributeCache(client);
 //	}
-
-	return bSuccess;
 }
 
 public Native_SetAttribByID(Handle:plugin, numParams)
@@ -436,7 +437,8 @@ public Native_SetAttribByID(Handle:plugin, numParams)
 	{
 		return ThrowNativeError(SP_ERROR_NATIVE, "TF2Attrib_SetByDefIndex: Attribute %d not valid", iAttrib);
 	}
-	new bool:bSuccess = !!SDKCall(hSDKSetRuntimeValue, pEntity+Address:offs, pAttribDef, flVal);
+	SDKCall(hSDKSetRuntimeValue, pEntity+Address:offs, pAttribDef, flVal);
+	return true;
 //	ClearAttributeCache(GetEntPropEnt(entity, Prop_Send, "m_hOwnerEntity"));
 //	decl String:strClassname[64];
 //	GetEntityClassname(entity, strClassname, sizeof(strClassname));
@@ -445,8 +447,6 @@ public Native_SetAttribByID(Handle:plugin, numParams)
 //		new client = GetEntPropEnt(entity, Prop_Send, "m_hOwnerEntity");
 //		if (client > 0 && client <= MaxClients && IsClientInGame(client)) ClearAttributeCache(client);
 //	}
-
-	return bSuccess;
 }
 
 public Native_GetAttrib(Handle:plugin, numParams)
