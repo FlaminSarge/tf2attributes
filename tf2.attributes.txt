@@ -72,7 +72,7 @@
 			"CAttributeList::SetRuntimeAttributeValue" //CEconItemAttributeDefinition*, float, returns void but somehow SetReturnInfo makes it return some nonzero client-based integer if success
 			{
 				"library"			"server"
-				"windows"			"\x55\x8B\xEC\x83\xEC\x14\x33\xD2\x53\x8B\xD9\x56\x57\x8B\x73\x10\x85\xF6"
+				"windows"			"\x55\x8B\xEC\x83\xEC\x2A\x2A\x2A\x2A\x2A\x2A\x2A\x2A\x8B\x2A\x2A\x2A\x2A\x2A\x2A\x2A\x2A\x8B\x2A\x2A\x2A\x2A\x2A\x8B\x2A\x2A\x2A\x2A\x2A"
 				"linux"				"@_ZN14CAttributeList24SetRuntimeAttributeValueEPK28CEconItemAttributeDefinitionf"
 				"mac"				"@_ZN14CAttributeList24SetRuntimeAttributeValueEPK28CEconItemAttributeDefinitionf"
 			}
