@@ -3,41 +3,43 @@
 #include <sourcemod>
 #include <sdktools>
 
+#pragma newdecls		required
+
 #define PLUGIN_NAME		"[TF2] TF2Attributes"
 #define PLUGIN_AUTHOR		"FlaminSarge"
 #define PLUGIN_VERSION		"1.2.1" //as of July 02, 2015
 #define PLUGIN_CONTACT		"http://forums.alliedmods.net/showthread.php?t=210221"
 #define PLUGIN_DESCRIPTION	"Functions to add/get attributes for TF2 players/items"
 
-public Plugin:myinfo = {
+public Plugin myinfo = {
 	name			= PLUGIN_NAME,
 	author			= PLUGIN_AUTHOR,
 	description		= PLUGIN_DESCRIPTION,
 	version			= PLUGIN_VERSION,
-	url				= PLUGIN_CONTACT
+	url			= PLUGIN_CONTACT
 };
 
-new Handle:hSDKGetItemDefinition;
-new Handle:hSDKGetSOCData;
-new Handle:hSDKSetCustomName;
-new Handle:hSDKSchema;
-new Handle:hSDKGetAttributeDef;
-new Handle:hSDKGetAttributeDefByName;
-new Handle:hSDKSetRuntimeValue;
-new Handle:hSDKGetAttributeByID;
-new Handle:hSDKGetAttributeByName;
-new Handle:hSDKOnAttribValuesChanged;
-new Handle:hSDKRemoveAttribute;
-new Handle:hSDKDestroyAllAttributes;
-new Handle:hSDKClearCache;
+Handle hSDKGetItemDefinition;
+Handle hSDKGetSOCData;
+Handle hSDKSetCustomName;
+Handle hSDKSchema;
+Handle hSDKGetAttributeDef;
+Handle hSDKGetAttributeDefByName;
+Handle hSDKSetRuntimeValue;
+Handle hSDKGetAttributeByID;
+Handle hSDKGetAttributeByName;
+Handle hSDKOnAttribValuesChanged;
+Handle hSDKRemoveAttribute;
+Handle hSDKDestroyAllAttributes;
+Handle hSDKClearCache;
 
-new Handle:hSDKSetOrAddAttribute;	//no longer used
+Handle hSDKSetOrAddAttribute;	//no longer used
 
-//new Handle:hPluginReady;
-new bool:g_bPluginReady = false;
-public APLRes:AskPluginLoad2(Handle:myself, bool:late, String:error[], err_max)
+//Handle hPluginReady;
+bool g_bPluginReady = false;
+public APLRes AskPluginLoad2(Handle myself, bool late, char[] error, int err_max)
 {
-	decl String:game[8];
+	char game[8];
 	GetGameFolderName(game, sizeof(game));
 	if (strncmp(game, "tf", 2, false) != 0)
 	{
@@ -75,15 +77,15 @@ public APLRes:AskPluginLoad2(Handle:myself, bool:late, String:error[], err_max)
 	return APLRes_Success;
 }
 
-public Native_IsReady(Handle:plugin, numParams)
+public int Native_IsReady(Handle plugin, int numParams)
 {
 	return g_bPluginReady;
 }
 
-public OnPluginStart()
+public void OnPluginStart()
 {
-	new Handle:hGameConf = LoadGameConfigFile("tf2.attributes");
-	new bool:bPluginReady = true;	//we don't want to set g_bPluginReady BEFORE any of the checks... do we? W/e, I never asked for this.
+	Handle hGameConf = LoadGameConfigFile("tf2.attributes");
+	bool bPluginReady = true;	//we don't want to set g_bPluginReady BEFORE any of the checks... do we? W/e, I never asked for this.
 	if (hGameConf == INVALID_HANDLE)
 	{
 		SetFailState("Could not locate gamedata file tf2.attributes.txt for TF2Attributes, pausing plugin");
@@ -255,7 +257,7 @@ public OnPluginStart()
 
 }
 
-stock bool:Internal_IsIntegerValue(iDefIndex)
+stock bool Internal_IsIntegerValue(int iDefIndex)
 {
 	switch (iDefIndex)
 	{
@@ -267,85 +269,85 @@ stock bool:Internal_IsIntegerValue(iDefIndex)
 	return false;
 }
 
-public Native_IsIntegerValue(Handle:plugin, numParams)
+public int Native_IsIntegerValue(Handle plugin, int numParams)
 {
-	new iDefIndex = GetNativeCell(1);
+	int iDefIndex = GetNativeCell(1);
 	return Internal_IsIntegerValue(iDefIndex);
 }
 
-stock GetStaticAttribs(Address:pItemDef, iAttribIndices[], iAttribValues[])
+stock int GetStaticAttribs(Address pItemDef, int[] iAttribIndices, int[] iAttribValues)
 {
 	if (!IsValidAddress(pItemDef)) return 0;	//...-1 maybe?
-	new iNumAttribs = LoadFromAddress(pItemDef + Address:32, NumberType_Int32);
-	new Address:pAttribList = Address:LoadFromAddress(pItemDef + Address:20, NumberType_Int32);
-	for (new i = 0; i < iNumAttribs; i++)	//THIS IS HOW YOU GET THE ATTRIBUTES ON AN ITEMDEF!
+	int iNumAttribs = LoadFromAddress(pItemDef + view_as<Address>(32), NumberType_Int32);
+	Address pAttribList = view_as<Address>( LoadFromAddress(pItemDef + view_as<Address>(20), NumberType_Int32) );
+	for (int i = 0; i < iNumAttribs; i++)	//THIS IS HOW YOU GET THE ATTRIBUTES ON AN ITEMDEF!
 	{
-		iAttribIndices[i] = LoadFromAddress(pAttribList + Address:(i * 8), NumberType_Int16);
-		iAttribValues[i] = LoadFromAddress(pAttribList + Address:(i * 8 + 4), NumberType_Int32);
+		iAttribIndices[i] = LoadFromAddress(pAttribList + view_as<Address>(i * 8), NumberType_Int16);
+		iAttribValues[i] = LoadFromAddress(pAttribList + view_as<Address>(i * 8 + 4), NumberType_Int32);
 	}
 	return iNumAttribs;
 }
 
-public Native_GetStaticAttribs(Handle:plugin, numParams)
+public int Native_GetStaticAttribs(Handle plugin, int numParams)
 {
-	new iItemDefIndex = GetNativeCell(1);
-	new Address:pSchema = SDKCall(hSDKSchema);
+	int iItemDefIndex = GetNativeCell(1);
+	Address pSchema = SDKCall(hSDKSchema);
 	if (pSchema == Address_Null) return -1;
 	if (hSDKGetItemDefinition == INVALID_HANDLE)
 	{
 		return ThrowNativeError(SP_ERROR_NATIVE, "TF2Attrib_GetStaticAttribs: Could not find call to CEconItemSchema::GetItemDefinition");
 	}
-	new Address:pItemDef = SDKCall(hSDKGetItemDefinition, pSchema, iItemDefIndex);
+	Address pItemDef = SDKCall(hSDKGetItemDefinition, pSchema, iItemDefIndex);
 	if (!IsValidAddress(pItemDef)) return -1;
-	new iAttribIndices[16], iAttribValues[16];
-	new iCount = GetStaticAttribs(pItemDef, iAttribIndices, iAttribValues);
+	int iAttribIndices[16], iAttribValues[16];
+	int iCount = GetStaticAttribs(pItemDef, iAttribIndices, iAttribValues);
 	SetNativeArray(2, iAttribIndices, 16);
 	SetNativeArray(3, iAttribValues, 16);	//cast to float on inc side
 	return iCount;
 }
 
-stock GetSOCAttribs(iEntity, iAttribIndices[], iAttribValues[])
+stock int GetSOCAttribs(int iEntity, int[] iAttribIndices, int[] iAttribValues)
 {
-	new iCEIVOffset = GetEntSendPropOffs(iEntity, "m_Item", true);
+	int iCEIVOffset = GetEntSendPropOffs(iEntity, "m_Item", true);
 	if (iCEIVOffset <= 0) return -1;
-	new Address:pEconItemView = GetEntityAddress(iEntity);
+	Address pEconItemView = GetEntityAddress(iEntity);
 	if (!IsValidAddress(pEconItemView))
 	{
 		return -1;
 	}
-	pEconItemView += Address:iCEIVOffset;
+	pEconItemView += view_as<Address>(iCEIVOffset);
 
-	new Address:pEconItem = SDKCall(hSDKGetSOCData, pEconItemView);
+	Address pEconItem = SDKCall(hSDKGetSOCData, pEconItemView);
 	if (!IsValidAddress(pEconItem))
 	{
 		return -1;
 	}
-	new Address:pCustomData = Address:LoadFromAddress(pEconItem+Address:44, NumberType_Int32);
-	new iCount = (LoadFromAddress(pEconItem+Address:31, NumberType_Int8) >> 2) & 1;	//(CEconItem+31 & 4) != 0
+	Address pCustomData = view_as<Address>( LoadFromAddress(pEconItem+view_as<Address>(44), NumberType_Int32) );
+	int iCount = (LoadFromAddress(pEconItem+view_as<Address>(31), NumberType_Int8) >> 2) & 1;	//(CEconItem+31 & 4) != 0
 	if (pCustomData >= Address_MinimumValid)
 	{
-		iCount = LoadFromAddress(pCustomData + Address:12, NumberType_Int32);
+		iCount = LoadFromAddress(pCustomData + view_as<Address>(12), NumberType_Int32);
 	}
-	new Address:pAttribDef = pEconItem+Address:36;
-	new Address:pAttribVal = pEconItem+Address:40;
-	for (new i = 0; i < iCount; ++i)
+	Address pAttribDef = pEconItem+view_as<Address>(36);
+	Address pAttribVal = pEconItem+view_as<Address>(40);
+	for (int i = 0; i < iCount; ++i)
 	{
 		if (pCustomData >= Address_MinimumValid)
 		{
-			pAttribDef = Address:(LoadFromAddress(pCustomData, NumberType_Int32) + 8 * i);
-			pAttribVal = Address:(LoadFromAddress(pCustomData, NumberType_Int32) + 8 * i + 4);
+			pAttribDef = view_as<Address>( (LoadFromAddress(pCustomData, NumberType_Int32) + 8 * i) );
+			pAttribVal = view_as<Address>( (LoadFromAddress(pCustomData, NumberType_Int32) + 8 * i + 4) );
 		}
-		new iAttribIndex = LoadFromAddress(pAttribDef, NumberType_Int16);
-		new iAttribValue = LoadFromAddress(pAttribVal, NumberType_Int32);
+		int iAttribIndex = LoadFromAddress(pAttribDef, NumberType_Int16);
+		int iAttribValue = LoadFromAddress(pAttribVal, NumberType_Int32);
 		iAttribIndices[i] = iAttribIndex;
 		iAttribValues[i] = iAttribValue;
 	}
 	return iCount;
 }
 
-public Native_GetSOCAttribs(Handle:plugin, numParams)
+public int Native_GetSOCAttribs(Handle plugin, int numParams)
 {
-	new iEntity = GetNativeCell(1);
+	int iEntity = GetNativeCell(1);
 	if (!IsValidEntity(iEntity))
 	{
 		return ThrowNativeError(SP_ERROR_NATIVE, "TF2Attrib_GetSOCAttribs: Invalid entity index %d passed", iEntity);
@@ -355,259 +357,259 @@ public Native_GetSOCAttribs(Handle:plugin, numParams)
 		return ThrowNativeError(SP_ERROR_NATIVE, "TF2Attrib_GetSOCAttribs: Could not find call to CEconItemView::GetSOCData");
 	}
 	//maybe move some address stuff to here from the stock, but for now it's okay
-	new iAttribIndices[16], iAttribValues[16];
-	new iCount = GetSOCAttribs(iEntity, iAttribIndices, iAttribValues);
+	int iAttribIndices[16], iAttribValues[16];
+	int iCount = GetSOCAttribs(iEntity, iAttribIndices, iAttribValues);
 	SetNativeArray(2, iAttribIndices, 16);
 	SetNativeArray(3, iAttribValues, 16);	//cast to float on inc side
 	return iCount;
 }
 
-public Native_SetAttrib(Handle:plugin, numParams)
+public int Native_SetAttrib(Handle plugin, int numParams)
 {
-	new entity = GetNativeCell(1);
+	int entity = GetNativeCell(1);
 	if (!IsValidEntity(entity))
 	{
 		return ThrowNativeError(SP_ERROR_NATIVE, "TF2Attrib_SetByName: Invalid entity index %d passed", entity);
 //		return;
 	}
-	decl String:strAttrib[128];	//"counts as assister is some kind of pet this update is going to be awesome" is 73 characters. Valve... Valve.
+	char strAttrib[128];	//"counts as assister is some kind of pet this update is going to be awesome" is 73 characters. Valve... Valve.
 	GetNativeString(2, strAttrib, sizeof(strAttrib));
-	new Float:flVal = GetNativeCell(3);
+	float flVal = GetNativeCell(3);
 
-	new offs = GetEntSendPropOffs(entity, "m_AttributeList", true);
+	int offs = GetEntSendPropOffs(entity, "m_AttributeList", true);
 	if (offs <= 0)
 	{
-//		decl String:strClassname[64];
+//		char strClassname[64];
 //		if (!GetEntityClassname(entity, strClassname, sizeof(strClassname))) strClassname = "";
 //		ThrowNativeError(SP_ERROR_NATIVE, "TF2Attrib_SetByName: \"m_AttributeList\" not found (entity %d/%s)", entity, strClassname);
 		return false;
 	}
-	new Address:pEntity = GetEntityAddress(entity);
+	Address pEntity = GetEntityAddress(entity);
 	if (pEntity == Address_Null) return false;
-	new Address:pSchema = SDKCall(hSDKSchema);
+	Address pSchema = SDKCall(hSDKSchema);
 	if (pSchema == Address_Null) return false;
-	new Address:pAttribDef = SDKCall(hSDKGetAttributeDefByName, pSchema, strAttrib);
+	Address pAttribDef = SDKCall(hSDKGetAttributeDefByName, pSchema, strAttrib);
 	if (!IsValidAddress(pAttribDef))
 	{
 		return ThrowNativeError(SP_ERROR_NATIVE, "TF2Attrib_SetByName: Attribute '%s' not valid", strAttrib);
 	}
-	new bool:bSuccess = !!SDKCall(hSDKSetRuntimeValue, pEntity+Address:offs, pAttribDef, flVal);
+	bool bSuccess = !!SDKCall(hSDKSetRuntimeValue, pEntity+view_as<Address>(offs), pAttribDef, flVal);
 	//Just a note, the above SDKCall returns ((entindex + 4) * 4) | 0xA000), and you can AND it with 0x1FFF to get back the entindex if you want, though it's pointless)
 	//I don't know any other specifics, such as if the highest 3 bits actually matter
 	//And I don't know what happens when you hit ent index 2047
 
 //	ClearAttributeCache(GetEntPropEnt(entity, Prop_Send, "m_hOwnerEntity"));
-//	decl String:strClassname[64];
+//	char strClassname[64];
 //	GetEntityClassname(entity, strClassname, sizeof(strClassname));
 //	if (strncmp(strClassname, "tf_wea", 6, false) == 0 || StrEqual(strClassname, "tf_powerup_bottle", false))
 //	{
-//		new client = GetEntPropEnt(entity, Prop_Send, "m_hOwnerEntity");
+//		int client = GetEntPropEnt(entity, Prop_Send, "m_hOwnerEntity");
 //		if (client > 0 && client <= MaxClients && IsClientInGame(client)) ClearAttributeCache(client);
 //	}
 
 	return bSuccess;
 }
 
-public Native_SetAttribByID(Handle:plugin, numParams)
+public int Native_SetAttribByID(Handle plugin, int numParams)
 {
-	new entity = GetNativeCell(1);
+	int entity = GetNativeCell(1);
 	if (!IsValidEntity(entity))
 	{
 		return ThrowNativeError(SP_ERROR_NATIVE, "TF2Attrib_SetByDefIndex: Invalid entity index %d passed", entity);
 //		return;
 	}
-	new iAttrib = GetNativeCell(2);
-	new Float:flVal = GetNativeCell(3);
+	int iAttrib = GetNativeCell(2);
+	float flVal = GetNativeCell(3);
 
-	new offs = GetEntSendPropOffs(entity, "m_AttributeList", true);
+	int offs = GetEntSendPropOffs(entity, "m_AttributeList", true);
 	if (offs <= 0)
 	{
-//		decl String:strClassname[64];
+//		char strClassname[64];
 //		if (!GetEntityClassname(entity, strClassname, sizeof(strClassname))) strClassname = "";
 //		ThrowNativeError(SP_ERROR_NATIVE, "TF2Attrib_SetByDefIndex: \"m_AttributeList\" not found (entity %d/%s)", entity, strClassname);
 		return false;
 	}
-	new Address:pEntity = GetEntityAddress(entity);
+	Address pEntity = GetEntityAddress(entity);
 	if (pEntity == Address_Null) return false;
-	new Address:pSchema = SDKCall(hSDKSchema);
+	Address pSchema = SDKCall(hSDKSchema);
 	if (pSchema == Address_Null) return false;
-	new Address:pAttribDef = SDKCall(hSDKGetAttributeDef, pSchema, iAttrib);
+	Address pAttribDef = SDKCall(hSDKGetAttributeDef, pSchema, iAttrib);
 	if (!IsValidAddress(pAttribDef))
 	{
 		return ThrowNativeError(SP_ERROR_NATIVE, "TF2Attrib_SetByDefIndex: Attribute %d not valid", iAttrib);
 	}
-	new bool:bSuccess = !!SDKCall(hSDKSetRuntimeValue, pEntity+Address:offs, pAttribDef, flVal);
+	bool bSuccess = !!SDKCall(hSDKSetRuntimeValue, pEntity+view_as<Address>(offs), pAttribDef, flVal);
 //	ClearAttributeCache(GetEntPropEnt(entity, Prop_Send, "m_hOwnerEntity"));
-//	decl String:strClassname[64];
+//	char strClassname[64];
 //	GetEntityClassname(entity, strClassname, sizeof(strClassname));
 //	if (strncmp(strClassname, "tf_wea", 6, false) == 0 || StrEqual(strClassname, "tf_powerup_bottle", false))
 //	{
-//		new client = GetEntPropEnt(entity, Prop_Send, "m_hOwnerEntity");
+//		int client = GetEntPropEnt(entity, Prop_Send, "m_hOwnerEntity");
 //		if (client > 0 && client <= MaxClients && IsClientInGame(client)) ClearAttributeCache(client);
 //	}
 
 	return bSuccess;
 }
 
-public Native_GetAttrib(Handle:plugin, numParams)
+public int Native_GetAttrib(Handle plugin, int numParams)
 {
-	new entity = GetNativeCell(1);
+	int entity = GetNativeCell(1);
 	if (!IsValidEntity(entity))
 	{
 		return ThrowNativeError(SP_ERROR_NATIVE, "TF2Attrib_GetByName: Invalid entity index %d passed", entity);
 //		return;
 	}
-	decl String:strAttrib[128];
+	char strAttrib[128];
 	GetNativeString(2, strAttrib, sizeof(strAttrib));
 
-	new offs = GetEntSendPropOffs(entity, "m_AttributeList", true);
+	int offs = GetEntSendPropOffs(entity, "m_AttributeList", true);
 	if (offs <= 0)
 	{
-//		decl String:strClassname[64];
+//		char strClassname[64];
 //		if (!GetEntityClassname(entity, strClassname, sizeof(strClassname))) strClassname = "";
 //		ThrowNativeError(SP_ERROR_NATIVE, "TF2Attrib_GetByName: \"m_AttributeList\" not found (entity %d/%s)", entity, strClassname);
-		return _:Address_Null;
+		return view_as<int>(Address_Null);
 	}
-	new Address:pEntity = GetEntityAddress(entity);
-	if (pEntity == Address_Null) return _:Address_Null;
-	new Address:pSchema = SDKCall(hSDKSchema);
-	if (pSchema == Address_Null) return _:Address_Null;
-	new Address:pAttribDef = SDKCall(hSDKGetAttributeDefByName, pSchema, strAttrib);
+	Address pEntity = GetEntityAddress(entity);
+	if (pEntity == Address_Null) return view_as<int>(Address_Null);
+	Address pSchema = SDKCall(hSDKSchema);
+	if (pSchema == Address_Null) return view_as<int>(Address_Null);
+	Address pAttribDef = SDKCall(hSDKGetAttributeDefByName, pSchema, strAttrib);
 	if (!IsValidAddress(pAttribDef))
 	{
 		return ThrowNativeError(SP_ERROR_NATIVE, "TF2Attrib_GetByName: Attribute '%s' not valid", strAttrib);
 	}
-	new iDefIndex = LoadFromAddress(pAttribDef + Address:4, NumberType_Int16);
-	new Address:pAttrib = Address:SDKCall(hSDKGetAttributeByID, pEntity+Address:offs, iDefIndex);
-	return (!IsValidAddress(pAttrib) ? (_:Address_Null) : (_:pAttrib));
+	int iDefIndex = LoadFromAddress(pAttribDef + view_as<Address>(4), NumberType_Int16);
+	Address pAttrib = view_as<Address>( SDKCall(hSDKGetAttributeByID, pEntity+view_as<Address>(offs), iDefIndex) );
+	return (!IsValidAddress(pAttrib) ? (view_as<int>(Address_Null)) : (view_as<int>(pAttrib)));
 }
 
-public Native_GetAttribByID(Handle:plugin, numParams)
+public int Native_GetAttribByID(Handle plugin, int numParams)
 {
-	new entity = GetNativeCell(1);
+	int entity = GetNativeCell(1);
 	if (!IsValidEntity(entity))
 	{
 		return ThrowNativeError(SP_ERROR_NATIVE, "TF2Attrib_GetByDefIndex: Invalid entity index %d passed", entity);
 //		return;
 	}
-	new iDefIndex = GetNativeCell(2);
+	int iDefIndex = GetNativeCell(2);
 
-	new offs = GetEntSendPropOffs(entity, "m_AttributeList", true);
+	int offs = GetEntSendPropOffs(entity, "m_AttributeList", true);
 	if (offs <= 0)
 	{
-//		decl String:strClassname[64];
+//		char strClassname[64];
 //		if (!GetEntityClassname(entity, strClassname, sizeof(strClassname))) strClassname = "";
 //		ThrowNativeError(SP_ERROR_NATIVE, "TF2Attrib_GetByName: \"m_AttributeList\" not found (entity %d/%s)", entity, strClassname);
-		return _:Address_Null;
+		return view_as<int>(Address_Null);
 	}
-	new Address:pEntity = GetEntityAddress(entity);
-	if (pEntity == Address_Null) return _:Address_Null;
-	new Address:pAttrib = Address:SDKCall(hSDKGetAttributeByID, pEntity+Address:offs, iDefIndex);
-	return (!IsValidAddress(pAttrib) ? (_:Address_Null) : (_:pAttrib));
+	Address pEntity = GetEntityAddress(entity);
+	if (pEntity == Address_Null) return view_as<int>(Address_Null);
+	Address pAttrib = view_as<Address>( SDKCall(hSDKGetAttributeByID, pEntity+view_as<Address>(offs), iDefIndex) );
+	return (!IsValidAddress(pAttrib) ? (view_as<int>(Address_Null)) : (view_as<int>(pAttrib)));
 }
 
-public Native_Remove(Handle:plugin, numParams)
+public int Native_Remove(Handle plugin, int numParams)
 {
-	new entity = GetNativeCell(1);
+	int entity = GetNativeCell(1);
 	if (!IsValidEntity(entity))
 	{
 		ThrowNativeError(SP_ERROR_NATIVE, "TF2Attrib_RemoveByName: Invalid entity index %d passed", entity);
 		return false;
 		// return;
 	}
-	decl String:strAttrib[128];
+	char strAttrib[128];
 	GetNativeString(2, strAttrib, sizeof(strAttrib));
 
-	new offs = GetEntSendPropOffs(entity, "m_AttributeList", true);
+	int offs = GetEntSendPropOffs(entity, "m_AttributeList", true);
 	if (offs <= 0)
 	{
-//		decl String:strClassname[64];
+//		char strClassname[64];
 //		if (!GetEntityClassname(entity, strClassname, sizeof(strClassname))) strClassname = "";
 //		ThrowNativeError(SP_ERROR_NATIVE, "TF2Attrib_Remove: \"m_AttributeList\" not found (entity %d/%s)", entity, strClassname);
 		return false;
 		// return;
 	}
-	new Address:pEntity = GetEntityAddress(entity);
+	Address pEntity = GetEntityAddress(entity);
 	if (pEntity == Address_Null)
 	{
 		return false;
 		// return;
 	}
 	if (pEntity == Address_Null) return false;
-	new Address:pSchema = SDKCall(hSDKSchema);
+	Address pSchema = SDKCall(hSDKSchema);
 	if (pSchema == Address_Null) return false;
-	new Address:pAttribDef = SDKCall(hSDKGetAttributeDefByName, pSchema, strAttrib);
+	Address pAttribDef = SDKCall(hSDKGetAttributeDefByName, pSchema, strAttrib);
 	if (!IsValidAddress(pAttribDef))
 	{
 		return ThrowNativeError(SP_ERROR_NATIVE, "TF2Attrib_RemoveByName: Attribute '%s' not valid", strAttrib);
 	}
-	SDKCall(hSDKRemoveAttribute, pEntity+Address:offs, pAttribDef);	//Not a clue what the return is here, but it's probably a clone of the attrib being removed
+	SDKCall(hSDKRemoveAttribute, pEntity+view_as<Address>(offs), pAttribDef);	//Not a clue what the return is here, but it's probably a clone of the attrib being removed
 
-//	SDKCall(hSDKRemoveAttribute, pEntity+Address:offs, strAttrib);
+//	SDKCall(hSDKRemoveAttribute, pEntity+view_as<Address>(offs), strAttrib);
 //	ClearAttributeCache(GetEntPropEnt(entity, Prop_Send, "m_hOwnerEntity"));
-//	decl String:strClassname[64];
+//	char strClassname[64];
 //	GetEntityClassname(entity, strClassname, sizeof(strClassname));
 //	if (strncmp(strClassname, "tf_wea", 6, false) == 0 || StrEqual(strClassname, "tf_powerup_bottle", false))
 //	{
-//		new client = GetEntPropEnt(entity, Prop_Send, "m_hOwnerEntity");
+//		int client = GetEntPropEnt(entity, Prop_Send, "m_hOwnerEntity");
 //		if (client > 0 && client <= MaxClients && IsClientInGame(client)) ClearAttributeCache(client);
 //	}
 
 	return true;
 }
 
-public Native_RemoveByID(Handle:plugin, numParams)
+public int Native_RemoveByID(Handle plugin, int numParams)
 {
-	new entity = GetNativeCell(1);
+	int entity = GetNativeCell(1);
 	if (!IsValidEntity(entity))
 	{
 		ThrowNativeError(SP_ERROR_NATIVE, "TF2Attrib_RemoveByDefIndex: Invalid entity index %d passed", entity);
 		return false;
 		// return;
 	}
-	new iAttrib = GetNativeCell(2);
+	int iAttrib = GetNativeCell(2);
 
-	new offs = GetEntSendPropOffs(entity, "m_AttributeList", true);
+	int offs = GetEntSendPropOffs(entity, "m_AttributeList", true);
 	if (offs <= 0)
 	{
-//		decl String:strClassname[64];
+//		char strClassname[64];
 //		if (!GetEntityClassname(entity, strClassname, sizeof(strClassname))) strClassname = "";
 //		ThrowNativeError(SP_ERROR_NATIVE, "TF2Attrib_Remove: \"m_AttributeList\" not found (entity %d/%s)", entity, strClassname);
 		return false;
 		// return;
 	}
-	new Address:pEntity = GetEntityAddress(entity);
+	Address pEntity = GetEntityAddress(entity);
 	if (pEntity == Address_Null)
 	{
 		return false;
 		// return;
 	}
 	if (pEntity == Address_Null) return false;
-	new Address:pSchema = SDKCall(hSDKSchema);
+	Address pSchema = SDKCall(hSDKSchema);
 	if (pSchema == Address_Null) return false;
-	new Address:pAttribDef = SDKCall(hSDKGetAttributeDef, pSchema, iAttrib);
+	Address pAttribDef = SDKCall(hSDKGetAttributeDef, pSchema, iAttrib);
 	if (!IsValidAddress(pAttribDef))
 	{
 		return ThrowNativeError(SP_ERROR_NATIVE, "TF2Attrib_RemoveByDefIndex: Attribute %d not valid", iAttrib);
 	}
-	SDKCall(hSDKRemoveAttribute, pEntity+Address:offs, pAttribDef);	//Not a clue what the return is here, but it's probably a clone of the attrib being removed
+	SDKCall(hSDKRemoveAttribute, pEntity+view_as<Address>(offs), pAttribDef);	//Not a clue what the return is here, but it's probably a clone of the attrib being removed
 
-//	SDKCall(hSDKRemoveAttribute, pEntity+Address:offs, strAttrib);
+//	SDKCall(hSDKRemoveAttribute, pEntity+view_as<Address>(offs), strAttrib);
 //	ClearAttributeCache(GetEntPropEnt(entity, Prop_Send, "m_hOwnerEntity"));
-//	decl String:strClassname[64];
+//	char strClassname[64];
 //	GetEntityClassname(entity, strClassname, sizeof(strClassname));
 //	if (strncmp(strClassname, "tf_wea", 6, false) == 0 || StrEqual(strClassname, "tf_powerup_bottle", false))
 //	{
-//		new client = GetEntPropEnt(entity, Prop_Send, "m_hOwnerEntity");
+//		int client = GetEntPropEnt(entity, Prop_Send, "m_hOwnerEntity");
 //		if (client > 0 && client <= MaxClients && IsClientInGame(client)) ClearAttributeCache(client);
 //	}
 
 	return true;
 }
 
-public Native_RemoveAll(Handle:plugin, numParams)
+public int Native_RemoveAll(Handle plugin, int numParams)
 {
-	new entity = GetNativeCell(1);
+	int entity = GetNativeCell(1);
 	if (!IsValidEntity(entity))
 	{
 		ThrowNativeError(SP_ERROR_NATIVE, "TF2Attrib_RemoveAll: Invalid entity index %d passed", entity);
@@ -615,135 +617,135 @@ public Native_RemoveAll(Handle:plugin, numParams)
 		// return;
 	}
 
-	new offs = GetEntSendPropOffs(entity, "m_AttributeList", true);
+	int offs = GetEntSendPropOffs(entity, "m_AttributeList", true);
 	if (offs <= 0)
 	{
-//		decl String:strClassname[64];
+//		char strClassname[64];
 //		if (!GetEntityClassname(entity, strClassname, sizeof(strClassname))) strClassname = "";
 //		ThrowNativeError(SP_ERROR_NATIVE, "TF2Attrib_RemoveAll: \"m_AttributeList\" not found (entity %d/%s)", entity, strClassname);
 		return false;
 		// return;
 	}
-	new Address:pEntity = GetEntityAddress(entity);
+	Address pEntity = GetEntityAddress(entity);
 	if (pEntity == Address_Null)
 	{
 		return false;
 		// return;
 	}
-	SDKCall(hSDKDestroyAllAttributes, pEntity+Address:offs);	//disregard the return (Valve does!)
+	SDKCall(hSDKDestroyAllAttributes, pEntity+view_as<Address>(offs));	//disregard the return (Valve does!)
 
 //	ClearAttributeCache(GetEntPropEnt(entity, Prop_Send, "m_hOwnerEntity"));
-//	decl String:strClassname[64];
+//	char strClassname[64];
 //	GetEntityClassname(entity, strClassname, sizeof(strClassname));
 //	if (strncmp(strClassname, "tf_wea", 6, false) == 0 || StrEqual(strClassname, "tf_powerup_bottle", false))
 //	{
-//		new client = GetEntPropEnt(entity, Prop_Send, "m_hOwnerEntity");
+//		int client = GetEntPropEnt(entity, Prop_Send, "m_hOwnerEntity");
 //		if (client > 0 && client <= MaxClients && IsClientInGame(client)) ClearAttributeCache(client);
 //	}
 
 	return true;
 }
 
-public Native_SetID(Handle:plugin, numParams)
+public int Native_SetID(Handle plugin, int numParams)
 {
-	new Address:pAttrib = Address:GetNativeCell(1);
+	Address pAttrib = view_as<Address>( GetNativeCell(1) );
 //	if (!IsValidAddress(pAttrib)) return;
-	new iDefIndex = GetNativeCell(2);
-	StoreToAddress(pAttrib+Address:4, iDefIndex, NumberType_Int16);
+	int iDefIndex = GetNativeCell(2);
+	StoreToAddress(pAttrib+view_as<Address>(4), iDefIndex, NumberType_Int16);
 }
 
-public Native_GetID(Handle:plugin, numParams)
+public int Native_GetID(Handle plugin, int numParams)
 {
-	new Address:pAttrib = Address:GetNativeCell(1);
+	Address pAttrib = view_as<Address>( GetNativeCell(1) );
 //	if (!IsValidAddress(pAttrib)) return -1;
-	return LoadFromAddress(pAttrib+Address:4, NumberType_Int16);
+	return LoadFromAddress(pAttrib+view_as<Address>(4), NumberType_Int16);
 }
 
-public Native_SetVal(Handle:plugin, numParams)
+public int Native_SetVal(Handle plugin, int numParams)
 {
-	new Address:pAttrib = Address:GetNativeCell(1);
+	Address pAttrib = view_as<Address>( GetNativeCell(1) );
 //	if (!IsValidAddress(pAttrib)) return;
-	new flVal = GetNativeCell(2);	//It's a float but avoiding tag mismatch warnings
-	StoreToAddress(pAttrib+Address:8, flVal, NumberType_Int32);
+	int flVal = GetNativeCell(2);	//It's a float but avoiding tag mismatch warnings
+	StoreToAddress(pAttrib+view_as<Address>(8), flVal, NumberType_Int32);
 }
 
-public Native_GetVal(Handle:plugin, numParams)
+public int Native_GetVal(Handle plugin, int numParams)
 {
-	new Address:pAttrib = Address:GetNativeCell(1);
+	Address pAttrib = view_as<Address>( GetNativeCell(1) );
 //	if (!IsValidAddress(pAttrib)) return -1;
-	return LoadFromAddress(pAttrib+Address:8, NumberType_Int32);
+	return LoadFromAddress(pAttrib+view_as<Address>(8), NumberType_Int32);
 }
 
-public Native_SetInitialVal(Handle:plugin, numParams)
+public int Native_SetInitialVal(Handle plugin, int numParams)
 {
 	return ThrowNativeError(SP_ERROR_NATIVE, "TF2Attrib_SetInitialValue: m_flInitialValue is no longer present on attributes");
 
-//	new Address:pAttrib = Address:GetNativeCell(1);
+//	Address pAttrib = view_as<Address>( GetNativeCell(1) );
 //	if (!IsValidAddress(pAttrib)) return;
-//	new flInitialVal = GetNativeCell(2);	//It's a float but avoiding tag mismatch warnings
-//	StoreToAddress(pAttrib+Address:12, flInitialVal, NumberType_Int32);
+//	int flInitialVal = GetNativeCell(2);	//It's a float but avoiding tag mismatch warnings
+//	StoreToAddress(pAttrib+view_as<Address>(12), flInitialVal, NumberType_Int32);
 }
 
-public Native_GetInitialVal(Handle:plugin, numParams)
+public int Native_GetInitialVal(Handle plugin, int numParams)
 {
 	return ThrowNativeError(SP_ERROR_NATIVE, "TF2Attrib_GetInitialValue: m_flInitialValue is no longer present on attributes");
 
-//	new Address:pAttrib = Address:GetNativeCell(1);
+//	Address pAttrib = view_as<Address>( GetNativeCell(1) );
 //	if (!IsValidAddress(pAttrib)) return -1;
-//	return LoadFromAddress(pAttrib+Address:12, NumberType_Int32);
+//	return LoadFromAddress(pAttrib+view_as<Address>(12), NumberType_Int32);
 }
 
-public Native_SetCurrency(Handle:plugin, numParams)
+public int Native_SetCurrency(Handle plugin, int numParams)
 {
-	new Address:pAttrib = Address:GetNativeCell(1);
+	Address pAttrib = view_as<Address>( GetNativeCell(1) );
 //	if (!IsValidAddress(pAttrib)) return;
-	new nCurrency = GetNativeCell(2);
-	StoreToAddress(pAttrib+Address:12, nCurrency, NumberType_Int32);
+	int nCurrency = GetNativeCell(2);
+	StoreToAddress(pAttrib+view_as<Address>(12), nCurrency, NumberType_Int32);
 }
 
-public Native_GetCurrency(Handle:plugin, numParams)
+public int Native_GetCurrency(Handle plugin, int numParams)
 {
-	new Address:pAttrib = Address:GetNativeCell(1);
+	Address pAttrib = view_as<Address>( GetNativeCell(1) );
 //	if (!IsValidAddress(pAttrib)) return -1;
-	return LoadFromAddress(pAttrib+Address:12, NumberType_Int32);
+	return LoadFromAddress(pAttrib+view_as<Address>(12), NumberType_Int32);
 }
 
-public Native_SetSetBonus(Handle:plugin, numParams)
+public int Native_SetSetBonus(Handle plugin, int numParams)
 {
 	return ThrowNativeError(SP_ERROR_NATIVE, "TF2Attrib_SetIsSetBonus: m_bSetBonus is no longer present on attributes");
 
-//	new Address:pAttrib = Address:GetNativeCell(1);
+//	Address pAttrib = view_as<Address>( GetNativeCell(1) );
 //	if (!IsValidAddress(pAttrib)) return;
-//	new bool:bSetBonus = !!GetNativeCell(2);
-//	StoreToAddress(pAttrib+Address:20, bSetBonus, NumberType_Int8);
+//	bool bSetBonus = !!GetNativeCell(2);
+//	StoreToAddress(pAttrib+view_as<Address>(20), bSetBonus, NumberType_Int8);
 }
 
-public Native_GetSetBonus(Handle:plugin, numParams)
+public int Native_GetSetBonus(Handle plugin, int numParams)
 {
 	return ThrowNativeError(SP_ERROR_NATIVE, "TF2Attrib_GetIsSetBonus: m_bSetBonus is no longer present on attributes");
 
-//	new Address:pAttrib = Address:GetNativeCell(1);
+//	Address pAttrib = view_as<Address>( GetNativeCell(1) );
 //	if (!IsValidAddress(pAttrib)) return -1;
-//	return !!LoadFromAddress(pAttrib+Address:20, NumberType_Int8);
+//	return !!LoadFromAddress(pAttrib+view_as<Address>(20), NumberType_Int8);
 }
 
-stock bool:ClearAttributeCache(entity)
+stock bool ClearAttributeCache(int entity)
 {
 	if (hSDKOnAttribValuesChanged == INVALID_HANDLE) return false;
 	if (entity <= 0 || !IsValidEntity(entity)) return false;
-	new offs = GetEntSendPropOffs(entity, "m_AttributeList", true);
+	int offs = GetEntSendPropOffs(entity, "m_AttributeList", true);
 	if (offs <= 0) return false;
-	new Address:pAttribs = GetEntityAddress(entity);
+	Address pAttribs = GetEntityAddress(entity);
 	if (!IsValidAddress(pAttribs)) return false;
-	pAttribs = Address:LoadFromAddress(pAttribs+Address:(offs+24), NumberType_Int32);	//AttributeManager
+	pAttribs = view_as<Address>( LoadFromAddress(pAttribs+view_as<Address>(offs+24), NumberType_Int32) );	//AttributeManager
 	if (!IsValidAddress(pAttribs)) return false;
 	SDKCall(hSDKOnAttribValuesChanged, pAttribs);
 	return true;
 }
 
-public Native_ClearCache(Handle:plugin, numParams)
+public int Native_ClearCache(Handle plugin, int numParams)
 {
-	new entity = GetNativeCell(1);
+	int entity = GetNativeCell(1);
 	if (!IsValidEntity(entity))
 	{
 		ThrowNativeError(SP_ERROR_NATIVE, "TF2Attrib_ClearCache: Invalid entity index %d passed", entity);
@@ -752,9 +754,9 @@ public Native_ClearCache(Handle:plugin, numParams)
 	return ClearAttributeCache(entity);
 }
 
-public Native_ListIDs(Handle:plugin, numParams)
+public int Native_ListIDs(Handle plugin, int numParams)
 {
-	new entity = GetNativeCell(1);
+	int entity = GetNativeCell(1);
 	if (!IsValidEntity(entity))
 	{
 		ThrowNativeError(SP_ERROR_NATIVE, "TF2Attrib_ListDefIndices: Invalid entity index %d passed", entity);
@@ -762,28 +764,28 @@ public Native_ListIDs(Handle:plugin, numParams)
 		// return;
 	}
 
-	new offs = GetEntSendPropOffs(entity, "m_AttributeList", true);
+	int offs = GetEntSendPropOffs(entity, "m_AttributeList", true);
 	if (offs <= 0)
 	{
-//		decl String:strClassname[64];
+//		char strClassname[64];
 //		if (!GetEntityClassname(entity, strClassname, sizeof(strClassname))) strClassname = "";
 //		ThrowNativeError(SP_ERROR_NATIVE, "TF2Attrib_RemoveAll: \"m_AttributeList\" not found (entity %d/%s)", entity, strClassname);
 		return -1;
 		// return;
 	}
-	new Address:pEntity = GetEntityAddress(entity);
+	Address pEntity = GetEntityAddress(entity);
 	if (pEntity == Address_Null)
 	{
 		return -1;
 		// return;
 	}
-	new Address:pAttribList = Address:LoadFromAddress(pEntity + Address:(offs + 4), NumberType_Int32);
+	Address pAttribList = view_as<Address>( LoadFromAddress(pEntity + view_as<Address>(offs + 4), NumberType_Int32) );
 	if (!IsValidAddress(pAttribList)) return -1;
-	new iNumAttribs = LoadFromAddress(pEntity + Address:(offs + 16), NumberType_Int32);
-	new iAttribIndices[16];
-	for (new i = 0; i < iNumAttribs; i++)	//THIS IS HOW YOU GET THE ATTRIBUTES ON AN ITEM!
+	int iNumAttribs = LoadFromAddress(pEntity + view_as<Address>(offs + 16), NumberType_Int32);
+	int iAttribIndices[16];
+	for (int i = 0; i < iNumAttribs; i++)	//THIS IS HOW YOU GET THE ATTRIBUTES ON AN ITEM!
 	{
-		iAttribIndices[i] = LoadFromAddress(pAttribList + Address:(i * 16 + 4), NumberType_Int16);
+		iAttribIndices[i] = LoadFromAddress(pAttribList + view_as<Address>(i * 16 + 4), NumberType_Int16);
 	}
 	SetNativeArray(2, iAttribIndices, 16);
 	return iNumAttribs;
@@ -837,4 +839,3 @@ public:
 };
 and +24 is still attribute manager
 */
-
