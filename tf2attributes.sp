@@ -5,7 +5,7 @@
 
 #define PLUGIN_NAME		"[TF2] TF2Attributes"
 #define PLUGIN_AUTHOR		"FlaminSarge"
-#define PLUGIN_VERSION		"1.3.0"
+#define PLUGIN_VERSION		"1.3.1"
 #define PLUGIN_CONTACT		"http://forums.alliedmods.net/showthread.php?t=210221"
 #define PLUGIN_DESCRIPTION	"Functions to add/get attributes for TF2 players/items"
 
@@ -334,8 +334,8 @@ stock GetSOCAttribs(iEntity, iAttribIndices[], iAttribValues[], size = 16)
 	{
 		return -1;
 	}
-	new Address:pCustomData = Address:LoadFromAddress(pEconItem+Address:44, NumberType_Int32);
-	new iCount = (LoadFromAddress(pEconItem+Address:31, NumberType_Int8) >> 2) & 1;	//(CEconItem+31 & 4) != 0
+	new Address:pCustomData = Address:LoadFromAddress(pEconItem+Address:0x34, NumberType_Int32);
+	new iCount = (LoadFromAddress(pEconItem+Address:0x27, NumberType_Int8) >> 2) & 1;	//(CEconItem+0x27 & 4) != 0
 	if (IsValidAddress(pCustomData))
 	{
 		iCount = LoadFromAddress(pCustomData + Address:12, NumberType_Int32);
