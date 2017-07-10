@@ -3,9 +3,9 @@
 #include <sourcemod>
 #include <sdktools>
 
-#define PLUGIN_NAME		"[TF2] TF2Attributes"
+#define PLUGIN_NAME			"[TF2] TF2Attributes"
 #define PLUGIN_AUTHOR		"FlaminSarge"
-#define PLUGIN_VERSION		"1.3.2"
+#define PLUGIN_VERSION		"1.4.0"
 #define PLUGIN_CONTACT		"http://forums.alliedmods.net/showthread.php?t=210221"
 #define PLUGIN_DESCRIPTION	"Functions to add/get attributes for TF2 players/items"
 
@@ -27,10 +27,23 @@ new Handle:hSDKGetAttributeByID;
 new Handle:hSDKOnAttribValuesChanged;
 new Handle:hSDKRemoveAttribute;
 new Handle:hSDKDestroyAllAttributes;
+new Handle:hSDKCAttStringNew;
+new Handle:hSDKCAttStringCopyFrom;
+new Handle:hSDKCAttStringDtor;
+new Handle:hSDKStdStringAssignLen;
+new Handle:hSDKStdStringAssign;
+
+StringMap g_hAttribStringMap;
 
 //new Handle:hPluginReady;
 new bool:g_bPluginReady = false;
-public APLRes:AskPluginLoad2(Handle:myself, bool:late, String:error[], err_max)
+
+#define STDSTRINGSIZE_WINDOWS 24
+#define STDSTRINGSIZE_LINUX 4
+new g_iStdStringSize = -1;
+
+
+public APLRes AskPluginLoad2(Handle myself, bool late, char[] error, int err_max)
 {
 	decl String:game[8];
 	GetGameFolderName(game, sizeof(game));
@@ -43,6 +56,8 @@ public APLRes:AskPluginLoad2(Handle:myself, bool:late, String:error[], err_max)
 	CreateNative("TF2Attrib_SetByDefIndex", Native_SetAttribByID);
 	CreateNative("TF2Attrib_GetByName", Native_GetAttrib);
 	CreateNative("TF2Attrib_GetByDefIndex", Native_GetAttribByID);
+	CreateNative("TF2Attrib_SetStringByName", Native_SetStrAttrib);
+	CreateNative("TF2Attrib_SetStringByDefIndex", Native_SetStrAttribByID);
 	CreateNative("TF2Attrib_RemoveByName", Native_Remove);
 	CreateNative("TF2Attrib_RemoveByDefIndex", Native_RemoveByID);
 	CreateNative("TF2Attrib_RemoveAll", Native_RemoveAll);
@@ -75,7 +90,7 @@ public Native_IsReady(Handle:plugin, numParams)
 	return g_bPluginReady;
 }
 
-public OnPluginStart()
+public void OnPluginStart()
 {
 	new Handle:hGameConf = LoadGameConfigFile("tf2.attributes");
 	new bool:bPluginReady = true;	//we don't want to set g_bPluginReady BEFORE any of the checks... do we? W/e, I never asked for this.
@@ -83,6 +98,11 @@ public OnPluginStart()
 	{
 		SetFailState("Could not locate gamedata file tf2.attributes.txt for TF2Attributes, pausing plugin");
 		bPluginReady = false;
+	}
+
+	g_iStdStringSize = GameConfGetOffset(hGameConf, "std::string size");
+	if (g_iStdStringSize < 0) {
+		LogError("Could not find 'std::string size' in gamedata file, String attributes are disabled");
 	}
 
 	StartPrepSDKCall(SDKCall_Raw);
@@ -196,10 +216,58 @@ public OnPluginStart()
 		bPluginReady = false;
 	}
 
+	StartPrepSDKCall(SDKCall_Raw);
+	PrepSDKCall_SetFromConf(hGameConf, SDKConf_Virtual, "CAttribute_String::New");
+	PrepSDKCall_SetReturnInfo(SDKType_PlainOldData, SDKPass_Plain);
+	hSDKCAttStringNew = EndPrepSDKCall();
+	if (hSDKCAttStringNew == INVALID_HANDLE)
+	{
+		SetFailState("Could not initialize call to CAttribute_String::New");
+		bPluginReady = false;
+	}
+
+	StartPrepSDKCall(SDKCall_Raw);
+	PrepSDKCall_SetFromConf(hGameConf, SDKConf_Virtual, "CAttribute_String::CopyFrom");
+	PrepSDKCall_AddParameter(SDKType_PlainOldData, SDKPass_Plain);
+	hSDKCAttStringCopyFrom = EndPrepSDKCall();
+	if (hSDKCAttStringCopyFrom == INVALID_HANDLE)
+	{
+		SetFailState("Could not initialize call to CAttribute_String::CopyFrom");
+		bPluginReady = false;
+	}
+
+	StartPrepSDKCall(SDKCall_Raw);
+	PrepSDKCall_SetFromConf(hGameConf, SDKConf_Virtual, "CAttribute_String::dtor");
+	hSDKCAttStringDtor = EndPrepSDKCall();
+	if (hSDKCAttStringDtor == INVALID_HANDLE)
+	{
+		SetFailState("Could not initialize call to CAttribute_String::dtor");
+		bPluginReady = false;
+	}
+
+	StartPrepSDKCall(SDKCall_Raw);
+	PrepSDKCall_SetFromConf(hGameConf, SDKConf_Virtual, "std::string::assign_len");
+	PrepSDKCall_AddParameter(SDKType_String, SDKPass_Pointer);
+	PrepSDKCall_AddParameter(SDKType_PlainOldData, SDKPass_Plain);
+	PrepSDKCall_SetReturnInfo(SDKType_PlainOldData, SDKPass_Plain);	//Returns address of std::string
+	hSDKStdStringAssignLen = EndPrepSDKCall();
+
+	StartPrepSDKCall(SDKCall_Raw);
+	PrepSDKCall_SetFromConf(hGameConf, SDKConf_Virtual, "std::string::assign");
+	PrepSDKCall_AddParameter(SDKType_String, SDKPass_Pointer);
+	PrepSDKCall_SetReturnInfo(SDKType_PlainOldData, SDKPass_Plain);	//Returns address of std::string
+	hSDKStdStringAssign = EndPrepSDKCall();
+
 	CreateConVar("tf2attributes_version", PLUGIN_VERSION, "TF2Attributes version number", FCVAR_NOTIFY);
 //	Call_StartForward(hPluginReady);
 //	Call_Finish();
 	g_bPluginReady = bPluginReady;	//I really never asked for this.
+}
+public void OnPluginEnd() {
+	ClearStringAttributeMap();
+}
+public void OnMapEnd() {
+	OnPluginEnd();
 }
 
 stock bool:Internal_IsIntegerValue(iDefIndex)
@@ -218,6 +286,236 @@ public Native_IsIntegerValue(Handle:plugin, numParams)
 {
 	new iDefIndex = GetNativeCell(1);
 	return Internal_IsIntegerValue(iDefIndex);
+}
+
+stock LoadStringFromAddress(Address:ptr, String:buffer[], maxlen)
+{
+	new i;
+	for (i = 0; i < maxlen-1; i++)
+	{
+		new byte = LoadFromAddress(ptr+Address:i, NumberType_Int8);
+		buffer[i] = byte;
+		if (byte == '\0')
+		{
+			i++;
+			break;
+		}
+	}
+	buffer[maxlen-1] = '\0';
+	return i;
+}
+stock StoreStringToAddress(Address:ptr, String:buffer[], maxlen)
+{
+	new i;
+	for (i = 0; i < maxlen; i++)
+	{
+		StoreToAddress(ptr+Address:i, buffer[i], NumberType_Int8);
+		if (buffer[i] == '\0') return i;
+	}
+	StoreToAddress(ptr+Address:(maxlen-1), '\0', NumberType_Int8);
+	return i;
+}
+
+public ClearStringAttributeMap() {
+	if (g_hAttribStringMap != INVALID_HANDLE) {
+		StringMapSnapshot entries = g_hAttribStringMap.Snapshot();
+		for (int i = 0; i < entries.Length; i++) {
+			int keySize = entries.KeyBufferSize(i);
+			char[] keyBuf = new char[keySize];
+			Address val = Address_Null;
+			if (entries.GetKey(i, keyBuf, keySize) > 0 && g_hAttribStringMap.GetValue(keyBuf, val) && val != Address_Null) {
+				SDKCall(hSDKCAttStringDtor, val);
+			}
+		}
+		g_hAttribStringMap.Clear();
+	}
+}
+stock Address AllocPooledString(char[] value) {
+	int ent = FindEntityByClassname(-1, "worldspawn");
+	if (!IsValidEntity(ent))
+		return Address_Null;
+	int offset = FindDataMapInfo(ent, "m_iName");
+	if (offset <= 0) {
+		return Address_Null;
+	}
+	Address pEnt = GetEntityAddress(ent);
+	if (pEnt == Address_Null) {
+		return Address_Null;
+	}
+	Address pEntName = pEnt + view_as<Address>(offset);
+	Address pOrig = view_as<Address>(LoadFromAddress(pEntName, NumberType_Int32));
+	DispatchKeyValue(ent, "targetname", value);
+	Address pString = view_as<Address>(LoadFromAddress(pEntName, NumberType_Int32));
+	StoreToAddress(pEntName, view_as<int>(pOrig), NumberType_Int32);
+	return pString;
+}
+stock Address GetCAttribString(char[] str) {
+	if (g_iStdStringSize < STDSTRINGSIZE_LINUX) {
+		return Address_Null;
+	}
+	if (g_hAttribStringMap == INVALID_HANDLE) {
+		g_hAttribStringMap = new StringMap();
+	}
+
+	int atts[16];
+	float vals[16];
+	new Address:pSchema = SDKCall(hSDKSchema);
+	if (pSchema == Address_Null) {
+		return Address_Null;
+	}
+	if (hSDKGetItemDefinition == INVALID_HANDLE) {
+		return Address_Null;
+	}
+	new Address:pItemDef = SDKCall(hSDKGetItemDefinition, pSchema, 0);
+	if (!IsValidAddress(pItemDef)) {
+		return Address_Null;
+	}
+	int numAtts = GetStaticAttribs(pItemDef, atts, vals);
+	Address pSourceAttString = Address_Null;
+
+	for (int i = 0; i < numAtts; i++) {
+		if (atts[i] == 796) {
+			pSourceAttString = view_as<Address>(vals[i]);
+			break;
+		}
+	}
+	if (pSourceAttString == Address_Null) {
+		return pSourceAttString;
+	}
+
+	Address pNewString = Address_Null;
+
+	//check if we already made this string and put it in our stringmap
+	if (g_hAttribStringMap.GetValue(str, pNewString)) {
+		return pNewString;
+/*
+		// All this stuff is only necessary if we aren't clearing out our stringmap on map end (which we are)
+		// get the std::string of the cached attr
+		char buf[512];
+
+		Address pStdString = view_as<Address>(LoadFromAddress(pNewString+pValue, NumberType_Int32));
+
+		// if the std::string's length and type are the same as the input (super rough check), then this attr is the right one, but if the map changed
+		//  then the pooled strings have been wiped, so we have to set the std::string to look at the new pooled string's address
+		if (LoadFromAddress(pStdString+pLength, NumberType_Int32) == strlen(str) && LoadFromAddress(pStdString+pCapacity, NumberType_Int32) == 0x1F) {
+			// get the C-string from the std::string
+			Address pStdCString = view_as<Address>(LoadFromAddress(pStdString, NumberType_Int32));
+
+			// get the chars from the C-string
+			LoadStringFromAddress(pStdCString, buf, sizeof(buf));
+
+			// if it's not the same string as str, set the std::string's C-string to str
+			if (!StrEqual(buf, str, true)) {
+				StoreToAddress(pStdString, view_as<int>(pCString), NumberType_Int32);
+			}
+			return pNewString;
+		}
+*/
+	}
+	//Offsets for CAttribString members
+	static Address pValue = view_as<Address>(0x10);
+	//Offsets for std::string members (windows)
+	static Address pLength = view_as<Address>(0x10);
+	static Address pCapacity = view_as<Address>(0x14);
+
+	pNewString = SDKCall(hSDKCAttStringNew, pSourceAttString);
+	SDKCall(hSDKCAttStringCopyFrom, pNewString, pSourceAttString);
+	Address pStdString = view_as<Address>(LoadFromAddress(pNewString+pValue, NumberType_Int32));
+	if (!IsValidAddress(pStdString)) {
+		return Address_Null;
+	}
+	if (hSDKStdStringAssignLen != INVALID_HANDLE) {
+		SDKCall(hSDKStdStringAssignLen, pStdString, str, strlen(str));
+	} else if (hSDKStdStringAssign != INVALID_HANDLE) {
+		SDKCall(hSDKStdStringAssign, pStdString, str);
+	} else {
+		//backup strat: home-rolled std::string::assign
+		Address pCString = AllocPooledString(str);
+		if (pCString == Address_Null) {
+			return pCString;
+		}
+
+		//Windows std::string size indicates you need to set the length and capacity (making lots of assumptions about capacity)
+		if (g_iStdStringSize == STDSTRINGSIZE_WINDOWS) {
+			StoreToAddress(pStdString+pLength, strlen(str), NumberType_Int32);
+			//set capacity to string length (std::string address contains pointer to C-string)
+			StoreToAddress(pStdString+pCapacity, strlen(str) > 16 ? strlen(str) : 16, NumberType_Int32);
+		}
+		//TODO mac case if SDKCall above doesn't work on mac (mac uses std::string size 12, needs to set length as +4 and valueptr as +8)
+		StoreToAddress(pStdString, view_as<int>(pCString), NumberType_Int32);
+	}
+
+	g_hAttribStringMap.SetValue(str, pNewString);
+	return pNewString;
+}
+public Native_SetStrAttrib(Handle:plugin, numParams) {
+	int entity = GetNativeCell(1);
+	if (!IsValidEntity(entity)) {
+		return ThrowNativeError(SP_ERROR_NATIVE, "TF2Attrib_SetStringByName: Invalid entity (iEntity=%d) passed", entity);
+//		return;
+	}
+	char strAttrib[128];	//"counts as assister is some kind of pet this update is going to be awesome" is 73 characters. Valve... Valve.
+	char strAttribVal[256];
+	GetNativeString(2, strAttrib, sizeof(strAttrib));
+	GetNativeString(3, strAttribVal, sizeof(strAttribVal));
+
+	int offs = GetEntSendPropOffs(entity, "m_AttributeList", true);
+	if (offs <= 0) {
+//		decl String:strClassname[64];
+//		if (!GetEntityClassname(entity, strClassname, sizeof(strClassname))) strClassname = "";
+//		ThrowNativeError(SP_ERROR_NATIVE, "TF2Attrib_SetByName: \"m_AttributeList\" not found (entity %d/%s)", entity, strClassname);
+		return false;
+	}
+	Address pEntity = GetEntityAddress(entity);
+	if (pEntity == Address_Null) {
+		return false;
+	}
+	Address pSchema = SDKCall(hSDKSchema);
+	if (pSchema == Address_Null) {
+		return false;
+	}
+	Address pAttribDef = SDKCall(hSDKGetAttributeDefByName, pSchema, strAttrib);
+	if (!IsValidAddress(pAttribDef)) {
+		return ThrowNativeError(SP_ERROR_NATIVE, "TF2Attrib_SetStringByName: Attribute '%s' not valid", strAttrib);
+	}
+	float flVal = view_as<float>(GetCAttribString(strAttribVal));
+
+	SDKCall(hSDKSetRuntimeValue, pEntity+view_as<Address>(offs), pAttribDef, flVal);
+	return true;
+}
+public Native_SetStrAttribByID(Handle:plugin, numParams) {
+	int entity = GetNativeCell(1);
+	if (!IsValidEntity(entity)) {
+		return ThrowNativeError(SP_ERROR_NATIVE, "TF2Attrib_SetStringByDefIndex: Invalid entity (iEntity=%d) passed", entity);
+//		return;
+	}
+	int iAttrib = GetNativeCell(2);
+	char strAttribVal[256];
+	GetNativeString(3, strAttribVal, sizeof(strAttribVal));
+
+	int offs = GetEntSendPropOffs(entity, "m_AttributeList", true);
+	if (offs <= 0) {
+//		decl String:strClassname[64];
+//		if (!GetEntityClassname(entity, strClassname, sizeof(strClassname))) strClassname = "";
+//		ThrowNativeError(SP_ERROR_NATIVE, "TF2Attrib_SetByName: \"m_AttributeList\" not found (entity %d/%s)", entity, strClassname);
+		return false;
+	}
+	Address pEntity = GetEntityAddress(entity);
+	if (pEntity == Address_Null) {
+		return false;
+	}
+	Address pSchema = SDKCall(hSDKSchema);
+	if (pSchema == Address_Null) {
+		return false;
+	}
+	Address pAttribDef = SDKCall(hSDKGetAttributeDef, pSchema, iAttrib);
+	if (!IsValidAddress(pAttribDef)) {
+		return ThrowNativeError(SP_ERROR_NATIVE, "TF2Attrib_SetStringByDefIndex: Attribute %d not valid", iAttrib);
+	}
+	float flVal = view_as<float>(GetCAttribString(strAttribVal));
+
+	SDKCall(hSDKSetRuntimeValue, pEntity+view_as<Address>(offs), pAttribDef, flVal);
+	return true;
 }
 
 stock GetStaticAttribs(Address:pItemDef, iAttribIndices[], iAttribValues[], size = 16)

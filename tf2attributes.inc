@@ -50,6 +50,30 @@ native Address TF2Attrib_GetByName(int iEntity, char[] strAttrib);
 native Address TF2Attrib_GetByDefIndex(int iEntity, int iDefIndex);
 
 /**
+ * Sets an attribute's value on an entity, adding it if it isn't on the entity.
+ *
+ * @param iEntity		Entity index to set the attribute on. Must have m_AttributeList.
+ * @param strAttrib		Name of the attribute, as from the "name" key in items_game.
+ * @param flValue		Value to set the attribute to
+ *
+ * @return				True if the attribute was added successfully, false if entity does not have m_AttributeList.
+ * @error				Invalid entity index or attribute name passed.
+ */
+native bool TF2Attrib_SetStringByName(int iEntity, char[] strAttrib, char[] strValue);
+
+/**
+ * Sets an attribute's value on an entity, adding it if it isn't on the entity.
+ *
+ * @param iEntity		Entity index to set the attribute on. Must have m_AttributeList.
+ * @param iDefIndex		Definition index of the attribute, as from the number on the attribute entry in items_game.
+ * @param flValue		Value to set the attribute to
+ *
+ * @return				True if the attribute was added successfully, false if entity does not have m_AttributeList.
+ * @error				Invalid entity index or attribute name passed.
+ */
+native bool TF2Attrib_SetStringByDefIndex(int iEntity, int iDefIndex, char[] strValue);
+
+/**
  * Removes an attribute from an entity.
  *
  * @param iEntity		Entity index to remove attribute from. Must have m_AttributeList.
