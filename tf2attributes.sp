@@ -318,43 +318,43 @@ public Native_GetStaticAttribs(Handle:plugin, numParams)
 	return iCount;
 }
 
-stock GetSOCAttribs(iEntity, iAttribIndices[], iAttribValues[], size = 16)
-{
-	new iCEIVOffset = GetEntSendPropOffs(iEntity, "m_Item", true);
-	if (iCEIVOffset <= 0) return -1;
-	new Address:pEconItemView = GetEntityAddress(iEntity);
-	if (!IsValidAddress(pEconItemView))
-	{
+stock GetSOCAttribs(iEntity, iAttribIndices[], iAttribValues[], size = 16) {
+	if (size <= 0) {
 		return -1;
 	}
-	pEconItemView += Address:iCEIVOffset;
+	int iCEIVOffset = GetEntSendPropOffs(iEntity, "m_Item", true);
+	if (iCEIVOffset <= 0) {
+		return -1;
+	}
+	Address pEconItemView = GetEntityAddress(iEntity);
+	if (!IsValidAddress(pEconItemView)) {
+		return -1;
+	}
+	pEconItemView += view_as<Address>(iCEIVOffset);
 
-	new Address:pEconItem = SDKCall(hSDKGetSOCData, pEconItemView);
-	if (!IsValidAddress(pEconItem))
-	{
+	Address pEconItem = SDKCall(hSDKGetSOCData, pEconItemView);
+	if (!IsValidAddress(pEconItem)) {
 		return -1;
 	}
-	new Address:pCustomData = Address:LoadFromAddress(pEconItem+Address:0x34, NumberType_Int32);
-	new iCount = (LoadFromAddress(pEconItem+Address:0x27, NumberType_Int8) >> 2) & 1;	//(CEconItem+0x27 & 4) != 0
-	if (IsValidAddress(pCustomData))
-	{
-		iCount = LoadFromAddress(pCustomData + Address:12, NumberType_Int32);
-	}
-	new Address:pAttribDef = pEconItem+Address:36;
-	new Address:pAttribVal = pEconItem+Address:40;
-	for (new i = 0; i < iCount && i < size; ++i)
-	{
-		if (IsValidAddress(pCustomData))
-		{
-			pAttribDef = Address:(LoadFromAddress(pCustomData, NumberType_Int32) + 8 * i);
-			pAttribVal = Address:(LoadFromAddress(pCustomData, NumberType_Int32) + 8 * i + 4);
+	Address pCustomData = view_as<Address>(LoadFromAddress(pEconItem + view_as<Address>(0x34), NumberType_Int32));
+	if (IsValidAddress(pCustomData)) {
+		int iCount = LoadFromAddress(pCustomData + view_as<Address>(0xC), NumberType_Int32);
+		for (int i = 0; i < iCount && i < size; ++i) {
+			Address pAttribDef = view_as<Address>(LoadFromAddress(pCustomData, NumberType_Int32) + (i * 8));
+			Address pAttribVal = view_as<Address>(LoadFromAddress(pCustomData, NumberType_Int32) + (i * 8) + 4);
+			iAttribIndices[i] = LoadFromAddress(pAttribDef, NumberType_Int16);
+			iAttribValues[i] = LoadFromAddress(pAttribVal, NumberType_Int32);
 		}
-		new iAttribIndex = LoadFromAddress(pAttribDef, NumberType_Int16);
-		new iAttribValue = LoadFromAddress(pAttribVal, NumberType_Int32);
-		iAttribIndices[i] = iAttribIndex;
-		iAttribValues[i] = iAttribValue;
+		return iCount;
 	}
-	return iCount;
+	//(CEconItem+0x27 & 0b100 & 0xFF) != 0
+	bool hasInternalAttribute = (LoadFromAddress(pEconItem + view_as<Address>(0x27), NumberType_Int8) & 0b100) != 0;
+	if (hasInternalAttribute) {
+		iAttribIndices[0] = LoadFromAddress(pEconItem + view_as<Address>(0x2C), NumberType_Int16);
+		iAttribValues[0] = LoadFromAddress(pEconItem + view_as<Address>(0x30), NumberType_Int32);
+		return 1;
+	}
+	return 0;
 }
 
 public Native_GetSOCAttribs(Handle:plugin, numParams)
