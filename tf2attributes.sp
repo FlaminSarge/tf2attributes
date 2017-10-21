@@ -19,19 +19,14 @@ public Plugin:myinfo = {
 
 new Handle:hSDKGetItemDefinition;
 new Handle:hSDKGetSOCData;
-new Handle:hSDKSetCustomName;
 new Handle:hSDKSchema;
 new Handle:hSDKGetAttributeDef;
 new Handle:hSDKGetAttributeDefByName;
 new Handle:hSDKSetRuntimeValue;
 new Handle:hSDKGetAttributeByID;
-new Handle:hSDKGetAttributeByName;
 new Handle:hSDKOnAttribValuesChanged;
 new Handle:hSDKRemoveAttribute;
 new Handle:hSDKDestroyAllAttributes;
-new Handle:hSDKClearCache;
-
-new Handle:hSDKSetOrAddAttribute;	//no longer used
 
 //new Handle:hPluginReady;
 new bool:g_bPluginReady = false;
@@ -109,17 +104,6 @@ public OnPluginStart()
 	{
 		LogError("Could not initialize call to CEconItemView::GetSOCData");
 		bPluginReady = false;
-	}
-
-	StartPrepSDKCall(SDKCall_Raw);
-	PrepSDKCall_SetFromConf(hGameConf, SDKConf_Signature, "CEconItem::SetCustomName");
-	PrepSDKCall_AddParameter(SDKType_String, SDKPass_Pointer);
-	PrepSDKCall_SetReturnInfo(SDKType_PlainOldData, SDKPass_Plain);	//Returns address of something
-	hSDKSetCustomName = EndPrepSDKCall();
-	if (hSDKSetCustomName == INVALID_HANDLE)
-	{
-		LogError("Could not initialize call to CEconItem::SetCustomName");
-		//bPluginReady = false;
 	}
 
 	StartPrepSDKCall(SDKCall_Static);
@@ -216,48 +200,6 @@ public OnPluginStart()
 //	Call_StartForward(hPluginReady);
 //	Call_Finish();
 	g_bPluginReady = bPluginReady;	//I really never asked for this.
-	return;
-
-//Below is stuff that we'll get back to later and/or never, for now everything above this works and PLEASE IGNORE THE COMPILER WARNING.
-	StartPrepSDKCall(SDKCall_Raw);
-	PrepSDKCall_SetFromConf(hGameConf, SDKConf_Signature, "CAttributeList::GetAttributeByName");
-	PrepSDKCall_AddParameter(SDKType_String, SDKPass_Pointer);
-	PrepSDKCall_SetReturnInfo(SDKType_PlainOldData, SDKPass_Plain);	//Returns address of a CEconItemAttribute
-	hSDKGetAttributeByName = EndPrepSDKCall();
-	if (hSDKGetAttributeByName == INVALID_HANDLE)
-	{
-		SetFailState("Could not initialize call to CAttributeList::GetAttributeByName");
-	}
-
-	StartPrepSDKCall(SDKCall_Raw);
-	PrepSDKCall_SetFromConf(hGameConf, SDKConf_Signature, "CAttributeList::SetOrAddAttributeValueByName");
-	PrepSDKCall_AddParameter(SDKType_String, SDKPass_Pointer);
-	PrepSDKCall_AddParameter(SDKType_Float, SDKPass_Plain);
-	PrepSDKCall_SetReturnInfo(SDKType_PlainOldData, SDKPass_Plain); //Apparently there's no return, but this is nonzero if the attribute is added successfully so let's try it
-	hSDKSetOrAddAttribute = EndPrepSDKCall();
-	if (hSDKSetOrAddAttribute == INVALID_HANDLE)
-	{
-		SetFailState("Could not initialize call to CAttributeList::SetOrAddAttributeValueByName");
-	}
-
-	StartPrepSDKCall(SDKCall_Raw);
-	PrepSDKCall_SetFromConf(hGameConf, SDKConf_Signature, "CAttributeList::RemoveAttribute");
-	PrepSDKCall_AddParameter(SDKType_String, SDKPass_Pointer);
-	hSDKRemoveAttribute = EndPrepSDKCall();
-	if (hSDKRemoveAttribute == INVALID_HANDLE)
-	{
-		SetFailState("Could not initialize call to CAttributeList::RemoveAttribute");
-	}
-
-	StartPrepSDKCall(SDKCall_Raw);
-	PrepSDKCall_SetFromConf(hGameConf, SDKConf_Signature, "CAttributeManager::ClearCache");
-	hSDKClearCache = EndPrepSDKCall();
-	if (hSDKClearCache == INVALID_HANDLE)
-	{
-		SetFailState("Could not initialize call to CAttributeManager::ClearCache");
-	}
-
-
 }
 
 stock bool:Internal_IsIntegerValue(iDefIndex)
@@ -338,7 +280,7 @@ stock GetSOCAttribs(iEntity, iAttribIndices[], iAttribValues[], size = 16) {
 	}
 	Address pCustomData = view_as<Address>(LoadFromAddress(pEconItem + view_as<Address>(0x34), NumberType_Int32));
 	if (IsValidAddress(pCustomData)) {
-		int iCount = LoadFromAddress(pCustomData + view_as<Address>(0xC), NumberType_Int32);
+		int iCount = LoadFromAddress(pCustomData + view_as<Address>(0x0C), NumberType_Int32);
 		for (int i = 0; i < iCount && i < size; ++i) {
 			Address pAttribDef = view_as<Address>(LoadFromAddress(pCustomData, NumberType_Int32) + (i * 8));
 			Address pAttribVal = view_as<Address>(LoadFromAddress(pCustomData, NumberType_Int32) + (i * 8) + 4);
