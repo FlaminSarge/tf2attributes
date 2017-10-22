@@ -281,8 +281,8 @@ public Native_IsIntegerValue(Handle:plugin, numParams)
 stock GetStaticAttribs(Address:pItemDef, iAttribIndices[], iAttribValues[], size = 16)
 {
 	if (!IsValidAddress(pItemDef)) return 0;	//...-1 maybe?
-	new iNumAttribs = LoadFromAddress(pItemDef + Address:32, NumberType_Int32);
-	new Address:pAttribList = Address:LoadFromAddress(pItemDef + Address:20, NumberType_Int32);
+	new iNumAttribs = LoadFromAddress(pItemDef + Address:40, NumberType_Int32);
+	new Address:pAttribList = Address:LoadFromAddress(pItemDef + Address:44, NumberType_Int32);
 	for (new i = 0; i < iNumAttribs && i < size; i++)	//THIS IS HOW YOU GET THE ATTRIBUTES ON AN ITEMDEF!
 	{
 		iAttribIndices[i] = LoadFromAddress(pAttribList + Address:(i * 8), NumberType_Int16);
