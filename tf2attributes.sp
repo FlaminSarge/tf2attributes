@@ -715,7 +715,7 @@ public Native_ClearCache(Handle:plugin, numParams)
 public Native_ListIDs(Handle:plugin, numParams)
 {
 	new entity = GetNativeCell(1);
-	new size = 16;
+	new size = 20;
 	if (numParams >= 3)
 	{
 		size = GetNativeCell(3);

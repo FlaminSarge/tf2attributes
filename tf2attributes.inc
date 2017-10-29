@@ -158,12 +158,12 @@ native int TF2Attrib_GetRefundableCurrency(Address pAttrib);
  *
  * @param iEntity		Entity index to get attribute list from. Must have m_AttributeList.
  * @param iDefIndices	Array of attribute definition indices found on the entity.
- * @param iMaxLen		Max length of the iDefIndices array, default 16. Does not affect the return value.
+ * @param iMaxLen		Max length of the iDefIndices array, default 20. Does not affect the return value.
  *
- * @return				The number of attributes found on the entity's attribute list (max 16 as of June 2017), or -1 if some error happened.
+ * @return				The number of attributes found on the entity's attribute list (max 20 as of Oct 2017), or -1 if some error happened.
  * @error				Invalid iEntity or iMaxLen.
  */
-native int TF2Attrib_ListDefIndices(int iEntity, int[] iDefIndices, int iMaxLen=16);
+native int TF2Attrib_ListDefIndices(int iEntity, int[] iDefIndices, int iMaxLen=20);
 
 /**
  * Returns arrays containing the static attributes and their values present on an item definition.
