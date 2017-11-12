@@ -4,6 +4,8 @@
 #include <sourcemod>
 #include <tf2attributes>
 
+#define NUM_RUNTIME_ATTRIBUTES 20
+
 Address lastAddr[MAXPLAYERS + 1];
 
 public void OnPluginStart()
@@ -545,9 +547,9 @@ public Action Command_GetAttrs(int client, int args)
 		}
 	}
 
-	int attriblist[16];
+	int attriblist[NUM_RUNTIME_ATTRIBUTES];
 	arg1 = "[SM] ListDefIndices:";
-	int count = TF2Attrib_ListDefIndices(wep, attriblist);
+	int count = TF2Attrib_ListDefIndices(wep, attriblist, sizeof(attriblist));
 	for (int i = 0; i < count; i++)
 	{
 		Format(arg1, sizeof(arg1), "%s %d", arg1, attriblist[i]);
@@ -555,8 +557,8 @@ public Action Command_GetAttrs(int client, int args)
 	ReplyToCommand(client, "%s on %s%d", arg1, usePlayer ? "" : "active wep of ", target);//, target);
 	if (!usePlayer)
 	{
-		float valuelist[16];
-		int count_static = TF2Attrib_GetSOCAttribs(wep, attriblist, valuelist);
+		float valuelist[NUM_RUNTIME_ATTRIBUTES];
+		int count_static = TF2Attrib_GetSOCAttribs(wep, attriblist, valuelist, sizeof(attriblist));
 		if (count_static > 0)
 		{
 			ReplyToCommand(client, "SOC:");
