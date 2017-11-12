@@ -4,7 +4,7 @@
 #include <sourcemod>
 #include <tf2attributes>
 
-#define NUM_RUNTIME_ATTRIBUTES 20
+#define MAX_RUNTIME_ATTRIBUTES 20
 
 Address lastAddr[MAXPLAYERS + 1];
 
@@ -517,7 +517,7 @@ public Action Command_GetAttrByID(int client, int args)
 public Action Command_GetAttrs(int client, int args)
 {
 	char arg1[64];
-	char arg3[32];
+	char arg2[32];
 	if (args < 1)
 	{
 		ReplyToCommand(client, "[SM] Usage: sm_getattrs <target> [p/w]");
@@ -525,9 +525,12 @@ public Action Command_GetAttrs(int client, int args)
 	}
 
 	GetCmdArg(1, arg1, sizeof(arg1));
-	if (args > 1) GetCmdArg(2, arg3, sizeof(arg3));
-	else arg3 = "p";
-	bool usePlayer = arg3[0] != 'w';
+	arg2 = "p";
+	if (args > 1)
+	{
+		GetCmdArg(2, arg2, sizeof(arg2));
+	}
+	bool usePlayer = arg2[0] != 'w';
 	int target = -1;
 	if (arg1[0] == '#' && arg1[1] == '#')	//'##entindex' instead of target
 	{
@@ -547,17 +550,24 @@ public Action Command_GetAttrs(int client, int args)
 		}
 	}
 
-	int attriblist[NUM_RUNTIME_ATTRIBUTES];
-	arg1 = "[SM] ListDefIndices:";
+	int attriblist[MAX_RUNTIME_ATTRIBUTES];
+	arg1 = "";
 	int count = TF2Attrib_ListDefIndices(wep, attriblist, sizeof(attriblist));
-	for (int i = 0; i < count; i++)
+	ReplyToCommand(client, "[SM] ListDefIndices: Got %d attributes on %s%d", count, usePlayer ? "" : "active wep of ", target);
+	if (count > sizeof(attriblist))
+	{
+		ReplyToCommand(client, "Max expected was %d", sizeof(attriblist));
+	}
+	for (int i = 0; i < count && i < sizeof(attriblist); i++)
 	{
 		Format(arg1, sizeof(arg1), "%s %d", arg1, attriblist[i]);
 	}
-	ReplyToCommand(client, "%s on %s%d", arg1, usePlayer ? "" : "active wep of ", target);//, target);
+	TrimString(arg1);
+
+	ReplyToCommand(client, "Runtime: [%s]", arg1);
 	if (!usePlayer)
 	{
-		float valuelist[NUM_RUNTIME_ATTRIBUTES];
+		float valuelist[MAX_RUNTIME_ATTRIBUTES];
 		int count_static = TF2Attrib_GetSOCAttribs(wep, attriblist, valuelist, sizeof(attriblist));
 		if (count_static > 0)
 		{
@@ -616,9 +626,18 @@ stock bool IsValidClient(int client)
 	if (client <= 0 || client > MaxClients) return false;
 	return IsClientInGame(client);
 }
+//TODO Stop using Address_MinimumValid once verified that logic still works without it
 stock bool IsValidAddress(Address pAddress)
 {
-	if (pAddress == Address_Null)	//yes the other one overlaps this but w/e
+	static Address Address_MinimumValid = view_as<Address>(0x10000);
+	if (pAddress == Address_Null)
 		return false;
-	return ((pAddress & view_as<Address>(0x7FFFFFFF)) >= Address_MinimumValid);
+	return unsigned_compare(view_as<int>(pAddress), view_as<int>(Address_MinimumValid)) >= 0;
+}
+stock int unsigned_compare(int a, int b) {
+	if (a == b)
+		return 0;
+	if ((a >>> 31) == (b >>> 31))
+		return ((a & 0x7FFFFFFF) > (b & 0x7FFFFFFF)) ? 1 : -1;
+	return ((a >>> 31) > (b >>> 31)) ? 1 : -1;
 }

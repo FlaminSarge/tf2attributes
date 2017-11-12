@@ -761,7 +761,7 @@ public Native_ListIDs(Handle:plugin, numParams)
 //TODO Stop using Address_MinimumValid once verified that logic still works without it
 stock bool IsValidAddress(Address pAddress)
 {
-	static Address Address_MinimumValid = Address:0x10000;
+	static Address Address_MinimumValid = view_as<Address>(0x10000);
 	if (pAddress == Address_Null)
 		return false;
 	return unsigned_compare(view_as<int>(pAddress), view_as<int>(Address_MinimumValid)) >= 0;
@@ -815,4 +815,3 @@ public:
 };
 and +24 is still attribute manager
 */
-
