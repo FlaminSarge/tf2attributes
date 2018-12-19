@@ -255,7 +255,7 @@ public int Native_GetStaticAttribs(Handle plugin, int numParams) {
 	return iCount;
 }
 
-int GetSOCAttribs(int iEntity, int[] iAttribIndices, int[] iAttribValues, int size = 16) {
+stock int GetSOCAttribs(int iEntity, int[] iAttribIndices, int[] iAttribValues, int size = 16) {
 	if (size <= 0) {
 		return -1;
 	}
