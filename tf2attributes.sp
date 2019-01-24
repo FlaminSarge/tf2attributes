@@ -227,14 +227,16 @@ public int Native_GetStaticAttribs(Handle plugin, int numParams)
 	if (numParams >= 4)
 	{
 		size = GetNativeCell(4);
-		if (size <= 0)
-		{
-			return ThrowNativeError(SP_ERROR_NATIVE, "TF2Attrib_GetStaticAttribs: Array size (iMaxLen=%d) must be greater than 0", size);
-		}
 	}
+	
 	if (hSDKGetItemDefinition == INVALID_HANDLE)
 	{
 		return ThrowNativeError(SP_ERROR_NATIVE, "TF2Attrib_GetStaticAttribs: Could not find call to CEconItemSchema::GetItemDefinition");
+	}
+	
+	if (size <= 0)
+	{
+		return ThrowNativeError(SP_ERROR_NATIVE, "TF2Attrib_GetStaticAttribs: Array size (iMaxLen=%d) must be greater than 0", size);
 	}
 	Address pSchema = SDKCall(hSDKSchema);
 	if (!pSchema) return -1;
@@ -293,10 +295,6 @@ public int Native_GetSOCAttribs(Handle plugin, int numParams)
 	if (numParams >= 4)
 	{
 		size = GetNativeCell(4);
-		if (size <= 0)
-		{
-			return ThrowNativeError(SP_ERROR_NATIVE, "TF2Attrib_GetSOCAttribs: Array size (iMaxLen=%d) must be greater than 0", size);
-		}
 	}
 	if (!IsValidEntity(iEntity))
 	{
@@ -306,6 +304,12 @@ public int Native_GetSOCAttribs(Handle plugin, int numParams)
 	{
 		return ThrowNativeError(SP_ERROR_NATIVE, "TF2Attrib_GetSOCAttribs: Could not find call to CEconItemView::GetSOCData");
 	}
+	
+	if (size <= 0)
+	{
+		return ThrowNativeError(SP_ERROR_NATIVE, "TF2Attrib_GetSOCAttribs: Array size (iMaxLen=%d) must be greater than 0", size);
+	}
+	
 	//maybe move some address stuff to here from the stock, but for now it's okay
 	int[] iAttribIndices = new int[size]; int[] iAttribValues = new int[size];
 	int iCount = GetSOCAttribs(iEntity, iAttribIndices, iAttribValues, size);
@@ -604,12 +608,14 @@ public int Native_ListIDs(Handle plugin, int numParams)
 	if (numParams >= 3)
 	{
 		size = GetNativeCell(3);
-		if (size <= 0)
-		{
-			ThrowNativeError(SP_ERROR_NATIVE, "TF2Attrib_ListDefIndices: Array size (iMaxLen=%d) must be greater than 0", size);
-			return -1;
-		}
 	}
+	
+	if (size <= 0)
+	{
+		ThrowNativeError(SP_ERROR_NATIVE, "TF2Attrib_ListDefIndices: Array size (iMaxLen=%d) must be greater than 0", size);
+		return -1;
+	}
+	
 	if (!IsValidEntity(entity))
 	{
 		ThrowNativeError(SP_ERROR_NATIVE, "TF2Attrib_ListDefIndices: Invalid entity (iEntity=%d) passed", entity);
