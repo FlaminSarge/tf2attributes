@@ -193,8 +193,10 @@ public void OnPluginStart()
 	delete hGameConf;
 }
 
-stock bool Internal_IsIntegerValue(int iDefIndex)
+public int Native_IsIntegerValue(Handle plugin, int numParams)
 {
+	int iDefIndex = GetNativeCell(1);
+	
 	switch (iDefIndex)
 	{
 		case 133, 143, 147, 152, 184, 185, 186, 192, 193, 194, 198, 211, 214, 227, 228, 229, 262, 294, 302, 372, 373, 374, 379, 381, 383, 403, 420, 371, 500, 501, 2010, 2011, 2021, 2023, 2024:
@@ -203,12 +205,6 @@ stock bool Internal_IsIntegerValue(int iDefIndex)
 		}
 	}
 	return false;
-}
-
-public int Native_IsIntegerValue(Handle plugin, int numParams)
-{
-	int iDefIndex = GetNativeCell(1);
-	return Internal_IsIntegerValue(iDefIndex);
 }
 
 stock int GetStaticAttribs(Address pItemDef, int[] iAttribIndices, int[] iAttribValues, int size = 16)
