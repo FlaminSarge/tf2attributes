@@ -519,7 +519,6 @@ public int Native_RemoveAll(Handle plugin, int numParams)
 public int Native_SetID(Handle plugin, int numParams)
 {
 	Address pAttrib = view_as<Address>(GetNativeCell(1));
-//	if (!IsValidAddress(pAttrib)) return;
 	int iDefIndex = GetNativeCell(2);
 	StoreToAddress(pAttrib+view_as<Address>(4), iDefIndex, NumberType_Int16);
 }
@@ -527,14 +526,12 @@ public int Native_SetID(Handle plugin, int numParams)
 public int Native_GetID(Handle plugin, int numParams)
 {
 	Address pAttrib = view_as<Address>(GetNativeCell(1));
-//	if (!IsValidAddress(pAttrib)) return -1;
 	return LoadFromAddress(pAttrib+view_as<Address>(4), NumberType_Int16);
 }
 
 public int Native_SetVal(Handle plugin, int numParams)
 {
 	Address pAttrib = view_as<Address>(GetNativeCell(1));
-//	if (!IsValidAddress(pAttrib)) return;
 	int flVal = GetNativeCell(2);	//It's a float but avoiding tag mismatch warnings
 	StoreToAddress(pAttrib+view_as<Address>(8), flVal, NumberType_Int32);
 }
@@ -542,33 +539,22 @@ public int Native_SetVal(Handle plugin, int numParams)
 public int Native_GetVal(Handle plugin, int numParams)
 {
 	Address pAttrib = view_as<Address>(GetNativeCell(1));
-//	if (!IsValidAddress(pAttrib)) return -1;
 	return LoadFromAddress(pAttrib+view_as<Address>(8), NumberType_Int32);
 }
 
 public int Native_SetInitialVal(Handle plugin, int numParams)
 {
 	return ThrowNativeError(SP_ERROR_NATIVE, "TF2Attrib_SetInitialValue: m_flInitialValue is no longer present on attributes");
-
-//	new Address:pAttrib = Address:GetNativeCell(1);
-//	if (!IsValidAddress(pAttrib)) return;
-//	new flInitialVal = GetNativeCell(2);	//It's a float but avoiding tag mismatch warnings
-//	StoreToAddress(pAttrib+Address:12, flInitialVal, NumberType_Int32);
 }
 
 public int Native_GetInitialVal(Handle plugin, int numParams)
 {
 	return ThrowNativeError(SP_ERROR_NATIVE, "TF2Attrib_GetInitialValue: m_flInitialValue is no longer present on attributes");
-
-//	new Address:pAttrib = Address:GetNativeCell(1);
-//	if (!IsValidAddress(pAttrib)) return -1;
-//	return LoadFromAddress(pAttrib+Address:12, NumberType_Int32);
 }
 
 public int Native_SetCurrency(Handle plugin, int numParams)
 {
 	Address pAttrib = view_as<Address>(GetNativeCell(1));
-//	if (!IsValidAddress(pAttrib)) return;
 	int nCurrency = GetNativeCell(2);
 	StoreToAddress(pAttrib+view_as<Address>(12), nCurrency, NumberType_Int32);
 }
@@ -576,27 +562,17 @@ public int Native_SetCurrency(Handle plugin, int numParams)
 public int Native_GetCurrency(Handle plugin, int numParams)
 {
 	Address pAttrib = view_as<Address>(GetNativeCell(1));
-//	if (!IsValidAddress(pAttrib)) return -1;
 	return LoadFromAddress(pAttrib+view_as<Address>(12), NumberType_Int32);
 }
 
 public int Native_SetSetBonus(Handle plugin, int numParams)
 {
 	return ThrowNativeError(SP_ERROR_NATIVE, "TF2Attrib_SetIsSetBonus: m_bSetBonus is no longer present on attributes");
-
-//	new Address:pAttrib = Address:GetNativeCell(1);
-//	if (!IsValidAddress(pAttrib)) return;
-//	new bool:bSetBonus = !!GetNativeCell(2);
-//	StoreToAddress(pAttrib+Address:20, bSetBonus, NumberType_Int8);
 }
 
 public int Native_GetSetBonus(Handle plugin, int numParams)
 {
 	return ThrowNativeError(SP_ERROR_NATIVE, "TF2Attrib_GetIsSetBonus: m_bSetBonus is no longer present on attributes");
-
-//	new Address:pAttrib = Address:GetNativeCell(1);
-//	if (!IsValidAddress(pAttrib)) return -1;
-//	return !!LoadFromAddress(pAttrib+Address:20, NumberType_Int8);
 }
 
 stock bool ClearAttributeCache(int entity)
