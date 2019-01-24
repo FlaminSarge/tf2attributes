@@ -7,7 +7,7 @@
 
 #define PLUGIN_NAME		"[TF2] TF2Attributes"
 #define PLUGIN_AUTHOR		"FlaminSarge"
-#define PLUGIN_VERSION		"1.3.3@nosoop-1.0.1"
+#define PLUGIN_VERSION		"1.3.3@nosoop-1.0.2"
 #define PLUGIN_CONTACT		"http://forums.alliedmods.net/showthread.php?t=210221"
 #define PLUGIN_DESCRIPTION	"Functions to add/get attributes for TF2 players/items"
 
@@ -308,12 +308,11 @@ public int Native_SetAttrib(Handle plugin, int numParams) {
 	GetNativeString(2, strAttrib, sizeof(strAttrib));
 	float flVal = GetNativeCell(3);
 	
-	int offs = GetEntSendPropOffs(entity, "m_AttributeList", true);
-	if (offs <= 0) {
+	Address pEntAttributeList = GetEntityAttributeList(entity);
+	if (!pEntAttributeList) {
 		return false;
 	}
 	
-	Address pEntity = GetEntityAddress(entity);
 	Address pSchema = GetItemSchema();
 	if (!pSchema) {
 		return false;
@@ -324,7 +323,7 @@ public int Native_SetAttrib(Handle plugin, int numParams) {
 		return ThrowNativeError(SP_ERROR_NATIVE, "TF2Attrib_SetByName: Attribute '%s' not valid", strAttrib);
 	}
 	
-	SDKCall(hSDKSetRuntimeValue, pEntity+view_as<Address>(offs), pAttribDef, flVal);
+	SDKCall(hSDKSetRuntimeValue, pEntAttributeList, pAttribDef, flVal);
 	return true;
 }
 
@@ -337,12 +336,11 @@ public int Native_SetAttribByID(Handle plugin, int numParams) {
 	int iAttrib = GetNativeCell(2);
 	float flVal = GetNativeCell(3);
 	
-	int offs = GetEntSendPropOffs(entity, "m_AttributeList", true);
-	if (offs <= 0) {
+	Address pEntAttributeList = GetEntityAttributeList(entity);
+	if (!pEntAttributeList) {
 		return false;
 	}
 	
-	Address pEntity = GetEntityAddress(entity);
 	Address pSchema = GetItemSchema();
 	if (!pSchema) {
 		return false;
@@ -353,7 +351,7 @@ public int Native_SetAttribByID(Handle plugin, int numParams) {
 		return ThrowNativeError(SP_ERROR_NATIVE, "TF2Attrib_SetByDefIndex: Attribute %d not valid", iAttrib);
 	}
 	
-	SDKCall(hSDKSetRuntimeValue, pEntity+view_as<Address>(offs), pAttribDef, flVal);
+	SDKCall(hSDKSetRuntimeValue, pEntAttributeList, pAttribDef, flVal);
 	return true;
 }
 
@@ -366,12 +364,11 @@ public int Native_GetAttrib(Handle plugin, int numParams) {
 	char strAttrib[128];
 	GetNativeString(2, strAttrib, sizeof(strAttrib));
 	
-	int offs = GetEntSendPropOffs(entity, "m_AttributeList", true);
-	if (offs <= 0) {
+	Address pEntAttributeList = GetEntityAttributeList(entity);
+	if (!pEntAttributeList) {
 		return 0;
 	}
 	
-	Address pEntity = GetEntityAddress(entity);
 	Address pSchema = GetItemSchema();
 	if (!pSchema) {
 		return 0;
@@ -383,7 +380,7 @@ public int Native_GetAttrib(Handle plugin, int numParams) {
 	}
 	
 	int iDefIndex = LoadFromAddress(pAttribDef + view_as<Address>(4), NumberType_Int16);
-	Address pAttrib = SDKCall(hSDKGetAttributeByID, pEntity+view_as<Address>(offs), iDefIndex);
+	Address pAttrib = SDKCall(hSDKGetAttributeByID, pEntAttributeList, iDefIndex);
 	
 	return (!IsValidAddress(pAttrib) ? 0 : view_as<int>(pAttrib));
 }
@@ -396,13 +393,12 @@ public int Native_GetAttribByID(Handle plugin, int numParams) {
 	
 	int iDefIndex = GetNativeCell(2);
 	
-	int offs = GetEntSendPropOffs(entity, "m_AttributeList", true);
-	if (offs <= 0) {
+	Address pEntAttributeList = GetEntityAttributeList(entity);
+	if (!pEntAttributeList) {
 		return 0;
 	}
 	
-	Address pEntity = GetEntityAddress(entity);
-	Address pAttrib = SDKCall(hSDKGetAttributeByID, pEntity+view_as<Address>(offs), iDefIndex);
+	Address pAttrib = SDKCall(hSDKGetAttributeByID, pEntAttributeList, iDefIndex);
 	return (!IsValidAddress(pAttrib) ? 0 : view_as<int>(pAttrib));
 }
 
@@ -416,12 +412,11 @@ public int Native_Remove(Handle plugin, int numParams) {
 	char strAttrib[128];
 	GetNativeString(2, strAttrib, sizeof(strAttrib));
 
-	int offs = GetEntSendPropOffs(entity, "m_AttributeList", true);
-	if (offs <= 0) {
+	Address pEntAttributeList = GetEntityAttributeList(entity);
+	if (!pEntAttributeList) {
 		return false;
 	}
 	
-	Address pEntity = GetEntityAddress(entity);
 	Address pSchema = GetItemSchema();
 	if (!pSchema) {
 		return false;
@@ -432,7 +427,7 @@ public int Native_Remove(Handle plugin, int numParams) {
 		return ThrowNativeError(SP_ERROR_NATIVE, "TF2Attrib_RemoveByName: Attribute '%s' not valid", strAttrib);
 	}
 	
-	SDKCall(hSDKRemoveAttribute, pEntity+view_as<Address>(offs), pAttribDef);	//Not a clue what the return is here, but it's probably a clone of the attrib being removed
+	SDKCall(hSDKRemoveAttribute, pEntAttributeList, pAttribDef);	//Not a clue what the return is here, but it's probably a clone of the attrib being removed
 	return true;
 }
 
@@ -445,12 +440,11 @@ public int Native_RemoveByID(Handle plugin, int numParams) {
 	
 	int iAttrib = GetNativeCell(2);
 
-	int offs = GetEntSendPropOffs(entity, "m_AttributeList", true);
-	if (offs <= 0) {
+	Address pEntAttributeList = GetEntityAttributeList(entity);
+	if (!pEntAttributeList) {
 		return false;
 	}
 	
-	Address pEntity = GetEntityAddress(entity);
 	Address pSchema = GetItemSchema();
 	if (!pSchema) {
 		return false;
@@ -461,7 +455,7 @@ public int Native_RemoveByID(Handle plugin, int numParams) {
 		return ThrowNativeError(SP_ERROR_NATIVE, "TF2Attrib_RemoveByDefIndex: Attribute %d not valid", iAttrib);
 	}
 	
-	SDKCall(hSDKRemoveAttribute, pEntity+view_as<Address>(offs), pAttribDef);	//Not a clue what the return is here, but it's probably a clone of the attrib being removed
+	SDKCall(hSDKRemoveAttribute, pEntAttributeList, pAttribDef);	//Not a clue what the return is here, but it's probably a clone of the attrib being removed
 	return true;
 }
 
@@ -472,14 +466,12 @@ public int Native_RemoveAll(Handle plugin, int numParams) {
 		return false;
 	}
 
-	int offs = GetEntSendPropOffs(entity, "m_AttributeList", true);
-	if (offs <= 0) {
+	Address pEntAttributeList = GetEntityAttributeList(entity);
+	if (!pEntAttributeList) {
 		return false;
 	}
 	
-	Address pEntity = GetEntityAddress(entity);
-	
-	SDKCall(hSDKDestroyAllAttributes, pEntity+view_as<Address>(offs));	//disregard the return (Valve does!)
+	SDKCall(hSDKDestroyAllAttributes, pEntAttributeList);	//disregard the return (Valve does!)
 	return true;
 }
 
@@ -601,6 +593,14 @@ public int Native_ListIDs(Handle plugin, int numParams) {
 
 static Address GetItemSchema() {
 	return SDKCall(hSDKSchema);
+}
+
+static Address GetEntityAttributeList(int entity) {
+	int offsAttributeList = GetEntSendPropOffs(entity, "m_AttributeList", true);
+	if (offsAttributeList > 0) {
+		return GetEntityAddress(entity) + view_as<Address>(offsAttributeList);
+	}
+	return Address_Null;
 }
 
 //TODO Stop using Address_MinimumValid once verified that logic still works without it
