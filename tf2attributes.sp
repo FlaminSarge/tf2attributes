@@ -232,12 +232,12 @@ public int Native_GetStaticAttribs(Handle plugin, int numParams)
 			return ThrowNativeError(SP_ERROR_NATIVE, "TF2Attrib_GetStaticAttribs: Array size (iMaxLen=%d) must be greater than 0", size);
 		}
 	}
-	Address pSchema = SDKCall(hSDKSchema);
-	if (pSchema == Address_Null) return -1;
 	if (hSDKGetItemDefinition == INVALID_HANDLE)
 	{
 		return ThrowNativeError(SP_ERROR_NATIVE, "TF2Attrib_GetStaticAttribs: Could not find call to CEconItemSchema::GetItemDefinition");
 	}
+	Address pSchema = SDKCall(hSDKSchema);
+	if (!pSchema) return -1;
 	Address pItemDef = SDKCall(hSDKGetItemDefinition, pSchema, iItemDefIndex);
 	if (!IsValidAddress(pItemDef)) return -1;
 	int[] iAttribIndices = new int[size]; int[] iAttribValues = new int[size];
@@ -333,9 +333,9 @@ public int Native_SetAttrib(Handle plugin, int numParams)
 	}
 	
 	Address pEntity = GetEntityAddress(entity);
-	if (pEntity == Address_Null) return false;
 	Address pSchema = SDKCall(hSDKSchema);
-	if (pSchema == Address_Null) return false;
+	if (!pSchema) return false;
+
 	Address pAttribDef = SDKCall(hSDKGetAttributeDefByName, pSchema, strAttrib);
 	if (!IsValidAddress(pAttribDef))
 	{
@@ -364,9 +364,9 @@ public int Native_SetAttribByID(Handle plugin, int numParams)
 	}
 	
 	Address pEntity = GetEntityAddress(entity);
-	if (pEntity == Address_Null) return false;
 	Address pSchema = SDKCall(hSDKSchema);
-	if (pSchema == Address_Null) return false;
+	if (!pSchema) return false;
+
 	Address pAttribDef = SDKCall(hSDKGetAttributeDef, pSchema, iAttrib);
 	if (!IsValidAddress(pAttribDef))
 	{
@@ -395,9 +395,9 @@ public int Native_GetAttrib(Handle plugin, int numParams)
 	}
 	
 	Address pEntity = GetEntityAddress(entity);
-	if (pEntity == Address_Null) return 0;
 	Address pSchema = SDKCall(hSDKSchema);
-	if (pSchema == Address_Null) return 0;
+	if (!pSchema) return 0;
+	
 	Address pAttribDef = SDKCall(hSDKGetAttributeDefByName, pSchema, strAttrib);
 	if (!IsValidAddress(pAttribDef))
 	{
@@ -426,7 +426,6 @@ public int Native_GetAttribByID(Handle plugin, int numParams)
 	}
 	
 	Address pEntity = GetEntityAddress(entity);
-	if (pEntity == Address_Null) return 0;
 	Address pAttrib = SDKCall(hSDKGetAttributeByID, pEntity+view_as<Address>(offs), iDefIndex);
 	return (!IsValidAddress(pAttrib) ? 0 : view_as<int>(pAttrib));
 }
@@ -450,9 +449,9 @@ public int Native_Remove(Handle plugin, int numParams)
 	}
 	
 	Address pEntity = GetEntityAddress(entity);
-	if (pEntity == Address_Null) return false;
 	Address pSchema = SDKCall(hSDKSchema);
-	if (pSchema == Address_Null) return false;
+	if (!pSchema) return false;
+	
 	Address pAttribDef = SDKCall(hSDKGetAttributeDefByName, pSchema, strAttrib);
 	if (!IsValidAddress(pAttribDef))
 	{
@@ -481,9 +480,9 @@ public int Native_RemoveByID(Handle plugin, int numParams)
 	}
 	
 	Address pEntity = GetEntityAddress(entity);
-	if (pEntity == Address_Null) return false;
 	Address pSchema = SDKCall(hSDKSchema);
-	if (pSchema == Address_Null) return false;
+	if (!pSchema) return false;
+
 	Address pAttribDef = SDKCall(hSDKGetAttributeDef, pSchema, iAttrib);
 	if (!IsValidAddress(pAttribDef))
 	{
@@ -510,7 +509,6 @@ public int Native_RemoveAll(Handle plugin, int numParams)
 	}
 	
 	Address pEntity = GetEntityAddress(entity);
-	if (pEntity == Address_Null) return false;
 	
 	SDKCall(hSDKDestroyAllAttributes, pEntity+view_as<Address>(offs));	//disregard the return (Valve does!)
 	return true;
@@ -582,7 +580,6 @@ stock bool ClearAttributeCache(int entity)
 	int offs = GetEntSendPropOffs(entity, "m_AttributeList", true);
 	if (offs <= 0) return false;
 	Address pAttribs = GetEntityAddress(entity);
-	if (!IsValidAddress(pAttribs)) return false;
 	pAttribs = view_as<Address>(LoadFromAddress(pAttribs+view_as<Address>(offs+24), NumberType_Int32));	//AttributeManager
 	if (!IsValidAddress(pAttribs)) return false;
 	SDKCall(hSDKOnAttribValuesChanged, pAttribs);
@@ -626,7 +623,6 @@ public int Native_ListIDs(Handle plugin, int numParams)
 	}
 	
 	Address pEntity = GetEntityAddress(entity);
-	if (pEntity == Address_Null) return -1;
 	Address pAttribList = view_as<Address>(LoadFromAddress(pEntity+view_as<Address>(offs+4), NumberType_Int32));
 	if (!IsValidAddress(pAttribList)) return -1;
 	int iNumAttribs = LoadFromAddress(pEntity+view_as<Address>(offs+16), NumberType_Int32);
