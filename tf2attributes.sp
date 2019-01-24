@@ -7,7 +7,7 @@
 
 #define PLUGIN_NAME		"[TF2] TF2Attributes"
 #define PLUGIN_AUTHOR		"FlaminSarge"
-#define PLUGIN_VERSION		"1.3.3@nosoop-1.0.4"
+#define PLUGIN_VERSION		"1.3.3@nosoop-1.0.5"
 #define PLUGIN_CONTACT		"http://forums.alliedmods.net/showthread.php?t=210221"
 #define PLUGIN_DESCRIPTION	"Functions to add/get attributes for TF2 players/items"
 
@@ -352,6 +352,7 @@ public int Native_SetAttribByID(Handle plugin, int numParams) {
 
 /* native Address TF2Attrib_GetByName(int iEntity, char[] strAttrib); */
 public int Native_GetAttrib(Handle plugin, int numParams) {
+	// There is a CAttributeList::GetByName, wonder why this is being done instead...
 	int entity = GetNativeCell(1);
 	if (!IsValidEntity(entity)) {
 		return ThrowNativeError(SP_ERROR_NATIVE, "TF2Attrib_GetByName: Invalid entity (iEntity=%d) passed", entity);
@@ -365,12 +366,10 @@ public int Native_GetAttrib(Handle plugin, int numParams) {
 		return 0;
 	}
 	
-	Address pAttribDef = GetAttributeDefinitionByName(strAttrib);
-	if (!pAttribDef) {
+	int iDefIndex;
+	if (!GetAttributeDefIndexByName(strAttrib, iDefIndex)) {
 		return ThrowNativeError(SP_ERROR_NATIVE, "TF2Attrib_GetByName: Attribute '%s' not valid", strAttrib);
 	}
-	
-	int iDefIndex = LoadFromAddress(pAttribDef + view_as<Address>(4), NumberType_Int16);
 	Address pAttrib = SDKCall(hSDKGetAttributeByID, pEntAttributeList, iDefIndex);
 	
 	return (!IsValidAddress(pAttrib) ? 0 : view_as<int>(pAttrib));
@@ -612,6 +611,20 @@ static Address GetAttributeDefinitionByID(int id) {
 		return Address_Null;
 	}
 	return SDKCall(hSDKGetAttributeDef, pSchema, id);
+}
+
+/** 
+ * Returns true if an attribute with the specified name exists, storing the definition index
+ * to the given by-ref `iDefIndex` argument.
+ */
+static bool GetAttributeDefIndexByName(const char[] name, int &iDefIndex) {
+	Address pAttribDef = GetAttributeDefinitionByName(name);
+	if (!pAttribDef) {
+		return false;
+	}
+	
+	iDefIndex = LoadFromAddress(pAttribDef + view_as<Address>(4), NumberType_Int16);
+	return true;
 }
 
 //TODO Stop using Address_MinimumValid once verified that logic still works without it
