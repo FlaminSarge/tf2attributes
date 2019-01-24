@@ -7,7 +7,7 @@
 
 #define PLUGIN_NAME		"[TF2] TF2Attributes"
 #define PLUGIN_AUTHOR		"FlaminSarge"
-#define PLUGIN_VERSION		"1.3.3@nosoop-1.0.9"
+#define PLUGIN_VERSION		"1.3.3@nosoop-1.0.10"
 #define PLUGIN_CONTACT		"http://forums.alliedmods.net/showthread.php?t=210221"
 #define PLUGIN_DESCRIPTION	"Functions to add/get attributes for TF2 players/items"
 
@@ -508,18 +508,12 @@ stock bool ClearAttributeCache(int entity) {
 		return false;
 	}
 	
-	int offs = GetEntSendPropOffs(entity, "m_AttributeList", true);
-	if (offs <= 0) {
+	Address pAttributeManager = GetEntityAttributeManager(entity);
+	if (!pAttributeManager) {
 		return false;
 	}
 	
-	Address pAttribs = GetEntityAddress(entity);
-	pAttribs = view_as<Address>(LoadFromAddress(pAttribs+view_as<Address>(offs+24), NumberType_Int32));	//AttributeManager
-	if (!IsValidAddress(pAttribs)) {
-		return false;
-	}
-	
-	SDKCall(hSDKOnAttribValuesChanged, pAttribs);
+	SDKCall(hSDKOnAttribValuesChanged, pAttributeManager);
 	return true;
 }
 
@@ -614,6 +608,16 @@ static bool GetAttributeDefIndexByName(const char[] name, int &iDefIndex) {
 	
 	iDefIndex = LoadFromAddress(pAttribDef + view_as<Address>(4), NumberType_Int16);
 	return true;
+}
+
+static Address GetEntityAttributeManager(int entity) {
+	Address pAttributeList = GetEntityAttributeList(entity);
+	if (!pAttributeList) {
+		return Address_Null;
+	}
+	
+	Address pAttributeManager = view_as<Address>(LoadFromAddress(pAttributeList+view_as<Address>(24), NumberType_Int32));
+	return pAttributeManager;
 }
 
 //TODO Stop using Address_MinimumValid once verified that logic still works without it
