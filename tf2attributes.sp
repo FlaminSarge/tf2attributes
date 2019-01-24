@@ -7,7 +7,7 @@
 
 #define PLUGIN_NAME		"[TF2] TF2Attributes"
 #define PLUGIN_AUTHOR		"FlaminSarge"
-#define PLUGIN_VERSION		"1.3.3@nosoop-1.0.10"
+#define PLUGIN_VERSION		"1.3.3@nosoop-1.0.11"
 #define PLUGIN_CONTACT		"http://forums.alliedmods.net/showthread.php?t=210221"
 #define PLUGIN_DESCRIPTION	"Functions to add/get attributes for TF2 players/items"
 
@@ -195,9 +195,7 @@ public int Native_IsIntegerValue(Handle plugin, int numParams) {
 }
 
 stock int GetStaticAttribs(Address pItemDef, int[] iAttribIndices, int[] iAttribValues, int size = 16) {
-	if (!IsValidAddress(pItemDef)) {
-		return 0; // ...-1 maybe?
-	}
+	AssertValidAddress(pItemDef);
 	
 	int iNumAttribs = LoadFromAddress(pItemDef+view_as<Address>(0x28), NumberType_Int32);
 	Address pAttribList = view_as<Address>(LoadFromAddress(pItemDef+view_as<Address>(0x1C), NumberType_Int32));
@@ -229,9 +227,7 @@ public int Native_GetStaticAttribs(Handle plugin, int numParams) {
 	}
 	
 	Address pItemDef = SDKCall(hSDKGetItemDefinition, pSchema, iItemDefIndex);
-	if (!IsValidAddress(pItemDef)) {
-		return -1;
-	}
+	AssertValidAddress(pItemDef);
 	
 	int[] iAttribIndices = new int[size]; int[] iAttribValues = new int[size];
 	int iCount = GetStaticAttribs(pItemDef, iAttribIndices, iAttribValues, size);
@@ -249,18 +245,16 @@ stock int GetSOCAttribs(int iEntity, int[] iAttribIndices, int[] iAttribValues, 
 		return -1;
 	}
 	Address pEconItemView = GetEntityAddress(iEntity);
-	if (!IsValidAddress(pEconItemView)) {
-		return -1;
-	}
+	AssertValidAddress(pEconItemView);
+	
 	pEconItemView += view_as<Address>(iCEIVOffset);
 	
 	Address pEconItem = SDKCall(hSDKGetSOCData, pEconItemView);
-	if (!IsValidAddress(pEconItem)) {
-		return -1;
-	}
+	AssertValidAddress(pEconItem);
 	
 	Address pCustomData = view_as<Address>(LoadFromAddress(pEconItem + view_as<Address>(0x34), NumberType_Int32));
-	if (IsValidAddress(pCustomData)) {
+	if (pCustomData) {
+		AssertValidAddress(pCustomData);
 		int iCount = LoadFromAddress(pCustomData + view_as<Address>(0x0C), NumberType_Int32);
 		for (int i = 0; i < iCount && i < size; ++i) {
 			Address pAttribDef = view_as<Address>(LoadFromAddress(pCustomData, NumberType_Int32) + (i * 8));
@@ -322,7 +316,7 @@ public int Native_SetAttrib(Handle plugin, int numParams) {
 	}
 	
 	Address pAttribDef = GetAttributeDefinitionByName(strAttrib);
-	if (!IsValidAddress(pAttribDef)) {
+	if (!pAttribDef) {
 		return ThrowNativeError(SP_ERROR_NATIVE, "TF2Attrib_SetByName: Attribute '%s' not valid", strAttrib);
 	}
 	
@@ -552,9 +546,7 @@ public int Native_ListIDs(Handle plugin, int numParams) {
 	
 	Address pEntity = GetEntityAddress(entity);
 	Address pAttribList = view_as<Address>(LoadFromAddress(pEntity+view_as<Address>(offs+4), NumberType_Int32));
-	if (!IsValidAddress(pAttribList)) {
-		return -1;
-	}
+	AssertValidAddress(pAttribList);
 	
 	int iNumAttribs = LoadFromAddress(pEntity+view_as<Address>(offs+16), NumberType_Int32);
 	int[] iAttribIndices = new int[size];
@@ -617,16 +609,22 @@ static Address GetEntityAttributeManager(int entity) {
 	}
 	
 	Address pAttributeManager = view_as<Address>(LoadFromAddress(pAttributeList+view_as<Address>(24), NumberType_Int32));
+	AssertValidAddress(pAttributeManager);
 	return pAttributeManager;
 }
 
-//TODO Stop using Address_MinimumValid once verified that logic still works without it
-stock bool IsValidAddress(Address pAddress) {
+/**
+ * Runtime assertion that we're receiving valid addresses.
+ * If we're not, something has gone terribly wrong and we might need to update.
+ */
+stock void AssertValidAddress(Address pAddress) {
 	static Address Address_MinimumValid = view_as<Address>(0x10000);
 	if (pAddress == Address_Null) {
-		return false;
+		ThrowError("Received invalid address (NULL)");
 	}
-	return unsigned_compare(view_as<int>(pAddress), view_as<int>(Address_MinimumValid)) >= 0;
+	if (unsigned_compare(view_as<int>(pAddress), view_as<int>(Address_MinimumValid)) < 0) {
+		ThrowError("Received invalid address (%08x)", pAddress);
+	}
 }
 
 stock int unsigned_compare(int a, int b) {
