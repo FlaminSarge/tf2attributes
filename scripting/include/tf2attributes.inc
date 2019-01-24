@@ -203,6 +203,15 @@ native int TF2Attrib_GetSOCAttribs(int iEntity, int[] iAttribIndices, float[] fl
 native bool TF2Attrib_IsIntegerValue(int iDefIndex);
 
 /**
+ * Returns true if an attribute with the specified name exists.
+ *
+ * @param strAttrib			Name of the attribute, as from the "name" key in items_game.
+ *
+ * @return					True if the attribute exists, false otherwise.
+ */
+native bool TF2Attrib_IsValidAttributeName(const char[] strAttrib);
+
+/**
  * Gets whether the plugin loaded without ANY errors.
  * For the purpose of allowing dependencies to ignore the plugin if this returns false.
  * Check in OnAllPluginsLoaded() or something. I dunno.
@@ -244,63 +253,8 @@ public __pl_tf2attributes_SetNTVOptional()
 	MarkNativeAsOptional("TF2Attrib_GetSOCAttribs");
 	MarkNativeAsOptional("TF2Attrib_ListDefIndices");
 	MarkNativeAsOptional("TF2Attrib_IsIntegerValue");
+	MarkNativeAsOptional("TF2Attrib_IsValidAttributeName");
+	
 	MarkNativeAsOptional("TF2Attrib_IsReady");
-
-	MarkNativeAsOptional("TF2Attrib_SetInitialValue");
-	MarkNativeAsOptional("TF2Attrib_GetInitialValue");
-	MarkNativeAsOptional("TF2Attrib_SetIsSetBonus");
-	MarkNativeAsOptional("TF2Attrib_GetIsSetBonus");
 }
 #endif
-
-//OLD things lie here
-//flInitialValue and bSetBonus don't exist anymore
-/**
- * Sets the value of m_flInitialValue on an attribute.
- *
- * @param pAttrib		Address of the attribute.
- * @param flValue		Value to set m_flInitialValue to.
- *
- * @noreturn
- */
-//native TF2Attrib_SetInitialValue(Address pAttrib, float flValue);
-
-/**
- * Returns the value of m_flInitialValue on an attribute.
- *
- * @param pAttrib		Address of the attribute.
- *
- * @return				The floating point value of m_flInitialValue on the attribute.
- */
-//native float TF2Attrib_GetInitialValue(Address pAttrib);
-
-/**
- * Sets the boolean value of m_bSetBonus on an attribute.
- *
- * @param pAttrib		Address of the attribute.
- * @param bSetBonus		Value to set m_bSetBonus to.
- *
- * @noreturn
- */
-//native TF2Attrib_SetIsSetBonus(Address pAttrib, bool bSetBonus);
-
-/**
- * Returns the boolean value of m_bSetBonus on an attribute.
- *
- * @param pAttrib		Address of the attribute.
- *
- * @return				The boolean value of m_bSetBonus on the attribute.
- */
-//native bool TF2Attrib_GetIsSetBonus(Address pAttrib);
-
-//stock TF2Attrib_IsIntegerValue(iDefIndex)
-//{
-//	switch (iDefIndex)
-//	{
-//		case 133, 143, 147, 152, 184, 185, 186, 192, 193, 194, 198, 211, 214, 227, 228, 229, 262, 294, 302, 372, 373, 374, 379, 381, 383, 403, 420:
-//		{
-//			return true;
-//		}
-//	}
-//	return false;
-//}

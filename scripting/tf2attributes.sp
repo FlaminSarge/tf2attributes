@@ -7,7 +7,7 @@
 
 #define PLUGIN_NAME		"[TF2] TF2Attributes"
 #define PLUGIN_AUTHOR		"FlaminSarge"
-#define PLUGIN_VERSION		"1.3.3@nosoop-1.0.14"
+#define PLUGIN_VERSION		"1.3.3@nosoop-1.1.0"
 #define PLUGIN_CONTACT		"http://forums.alliedmods.net/showthread.php?t=210221"
 #define PLUGIN_DESCRIPTION	"Functions to add/get attributes for TF2 players/items"
 
@@ -61,6 +61,7 @@ public APLRes AskPluginLoad2(Handle myself, bool late, char[] error, int err_max
 	CreateNative("TF2Attrib_GetStaticAttribs", Native_GetStaticAttribs);
 	CreateNative("TF2Attrib_GetSOCAttribs", Native_GetSOCAttribs);
 	CreateNative("TF2Attrib_IsIntegerValue", Native_IsIntegerValue);
+	CreateNative("TF2Attrib_IsValidAttributeName", Native_IsValidAttributeName);
 	CreateNative("TF2Attrib_IsReady", Native_IsReady);
 
 	//unused, backcompat I guess?
@@ -569,6 +570,14 @@ public int Native_ListIDs(Handle plugin, int numParams) {
 	}
 	SetNativeArray(2, iAttribIndices, size);
 	return iNumAttribs;
+}
+
+/* native bool TF2Attrib_IsValidAttributeName(const char[] strAttrib); */
+public int Native_IsValidAttributeName(Handle plugin, int numParams) {
+	char strAttrib[MAX_ATTRIBUTE_NAME_LENGTH];
+	GetNativeString(1, strAttrib, sizeof(strAttrib));
+	
+	return GetAttributeDefinitionByName(strAttrib)? true : false;
 }
 
 /* helper functions */
