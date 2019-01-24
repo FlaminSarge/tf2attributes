@@ -7,7 +7,7 @@
 
 #define PLUGIN_NAME		"[TF2] TF2Attributes"
 #define PLUGIN_AUTHOR		"FlaminSarge"
-#define PLUGIN_VERSION		"1.3.3@nosoop-1.0.13"
+#define PLUGIN_VERSION		"1.3.3@nosoop-1.0.14"
 #define PLUGIN_CONTACT		"http://forums.alliedmods.net/showthread.php?t=210221"
 #define PLUGIN_DESCRIPTION	"Functions to add/get attributes for TF2 players/items"
 
@@ -197,14 +197,14 @@ public int Native_IsIntegerValue(Handle plugin, int numParams) {
 stock int GetStaticAttribs(Address pItemDef, int[] iAttribIndices, int[] iAttribValues, int size = 16) {
 	AssertValidAddress(pItemDef);
 	
-	int iNumAttribs = LoadFromAddress(pItemDef+view_as<Address>(0x28), NumberType_Int32);
-	Address pAttribList = view_as<Address>(LoadFromAddress(pItemDef+view_as<Address>(0x1C), NumberType_Int32));
+	int iNumAttribs = LoadFromAddressOffset(pItemDef, 0x28, NumberType_Int32);
+	Address pAttribList = DereferencePointer(pItemDef, .offset = 0x1C);
 	
 	for (int i = 0; i < iNumAttribs && i < size; i++) {
 		// THIS IS HOW YOU GET THE ATTRIBUTES ON AN ITEMDEF!
-		Address pStaticAttrib = pAttribList + view_as<Address>(i * 8);
+		Address pStaticAttrib = pAttribList + view_as<Address>(i * 0x08);
 		iAttribIndices[i] = LoadFromAddress(pStaticAttrib, NumberType_Int16);
-		iAttribValues[i] = LoadFromAddress(pStaticAttrib + view_as<Address>(4), NumberType_Int32);
+		iAttribValues[i] = LoadFromAddressOffset(pStaticAttrib, 0x04, NumberType_Int32);
 	}
 	return iNumAttribs;
 }
@@ -251,26 +251,26 @@ stock int GetSOCAttribs(int iEntity, int[] iAttribIndices, int[] iAttribValues, 
 		return 0;
 	}
 	
-	Address pCustomData = view_as<Address>(LoadFromAddress(pEconItem + view_as<Address>(0x34), NumberType_Int32));
+	Address pCustomData = DereferencePointer(pEconItem, .offset = 0x34);
 	if (pCustomData) {
 		AssertValidAddress(pCustomData);
-		int iCount = LoadFromAddress(pCustomData + view_as<Address>(0x0C), NumberType_Int32);
+		int iCount = LoadFromAddressOffset(pCustomData, 0x0C, NumberType_Int32);
 		
-		Address pCustomDataArray = view_as<Address>(LoadFromAddress(pCustomData, NumberType_Int32));
+		Address pCustomDataArray = DereferencePointer(pCustomData);
 		for (int i = 0; i < iCount && i < size; ++i) {
-			Address pSOCAttribEntry = pCustomDataArray + view_as<Address>(i * 8);
+			Address pSOCAttribEntry = pCustomDataArray + view_as<Address>(i * 0x08);
 			
 			iAttribIndices[i] = LoadFromAddress(pSOCAttribEntry, NumberType_Int16);
-			iAttribValues[i] = LoadFromAddress(pSOCAttribEntry + view_as<Address>(4), NumberType_Int32);
+			iAttribValues[i] = LoadFromAddressOffset(pSOCAttribEntry, 0x04, NumberType_Int32);
 		}
 		return iCount;
 	}
 	
 	//(CEconItem+0x27 & 0b100 & 0xFF) != 0
-	bool hasInternalAttribute = (LoadFromAddress(pEconItem + view_as<Address>(0x27), NumberType_Int8) & 0b100) != 0;
+	bool hasInternalAttribute = !!(LoadFromAddressOffset(pEconItem, 0x27, NumberType_Int8) & 0b100);
 	if (hasInternalAttribute) {
-		iAttribIndices[0] = LoadFromAddress(pEconItem + view_as<Address>(0x2C), NumberType_Int16);
-		iAttribValues[0] = LoadFromAddress(pEconItem + view_as<Address>(0x30), NumberType_Int32);
+		iAttribIndices[0] = LoadFromAddressOffset(pEconItem, 0x2C, NumberType_Int16);
+		iAttribValues[0] = LoadFromAddressOffset(pEconItem, 0x30, NumberType_Int32);
 		return 1;
 	}
 	return 0;
@@ -459,39 +459,39 @@ public int Native_RemoveAll(Handle plugin, int numParams) {
 public int Native_SetID(Handle plugin, int numParams) {
 	Address pAttrib = GetNativeCell(1);
 	int iDefIndex = GetNativeCell(2);
-	StoreToAddress(pAttrib+view_as<Address>(4), iDefIndex, NumberType_Int16);
+	StoreToAddressOffset(pAttrib, 0x04, iDefIndex, NumberType_Int16);
 }
 
 /* native int TF2Attrib_GetDefIndex(Address pAttrib); */
 public int Native_GetID(Handle plugin, int numParams) {
 	Address pAttrib = GetNativeCell(1);
-	return LoadFromAddress(pAttrib+view_as<Address>(4), NumberType_Int16);
+	return LoadFromAddressOffset(pAttrib, 0x04, NumberType_Int16);
 }
 
 /* native void TF2Attrib_SetValue(Address pAttrib, float flValue); */
 public int Native_SetVal(Handle plugin, int numParams) {
 	Address pAttrib = GetNativeCell(1);
 	int flVal = GetNativeCell(2);	//It's a float but avoiding tag mismatch warnings from StoreToAddress
-	StoreToAddress(pAttrib+view_as<Address>(8), flVal, NumberType_Int32);
+	StoreToAddressOffset(pAttrib, 0x08, flVal, NumberType_Int32);
 }
 
 /* native float TF2Attrib_GetValue(Address pAttrib); */
 public int Native_GetVal(Handle plugin, int numParams) {
 	Address pAttrib = GetNativeCell(1);
-	return LoadFromAddress(pAttrib+view_as<Address>(8), NumberType_Int32);
+	return LoadFromAddressOffset(pAttrib, 0x08, NumberType_Int32);
 }
 
 /* native void TF2Attrib_SetRefundableCurrency(Address pAttrib, int nCurrency); */
 public int Native_SetCurrency(Handle plugin, int numParams) {
 	Address pAttrib = GetNativeCell(1);
 	int nCurrency = GetNativeCell(2);
-	StoreToAddress(pAttrib+view_as<Address>(12), nCurrency, NumberType_Int32);
+	StoreToAddressOffset(pAttrib, 0x0C, nCurrency, NumberType_Int32);
 }
 
 /* native int TF2Attrib_GetRefundableCurrency(Address pAttrib); */
 public int Native_GetCurrency(Handle plugin, int numParams) {
 	Address pAttrib = GetNativeCell(1);
-	return LoadFromAddress(pAttrib+view_as<Address>(12), NumberType_Int32);
+	return LoadFromAddressOffset(pAttrib, 0x0C, NumberType_Int32);
 }
 
 public int Native_DeprecatedPropertyAccess(Handle plugin, int numParams) {
@@ -540,20 +540,20 @@ public int Native_ListIDs(Handle plugin, int numParams) {
 		return -1;
 	}
 	
-	int offs = GetEntSendPropOffs(entity, "m_AttributeList", true);
-	if (offs <= 0) {
+	Address pAttributeList = GetEntityAttributeList(entity);
+	if (!pAttributeList) {
 		return -1;
 	}
 	
-	Address pEntity = GetEntityAddress(entity);
-	Address pAttribList = view_as<Address>(LoadFromAddress(pEntity+view_as<Address>(offs+4), NumberType_Int32));
-	AssertValidAddress(pAttribList);
+	Address pAttribListData = DereferencePointer(pAttributeList, .offset = 0x04);
+	AssertValidAddress(pAttribListData);
 	
-	int iNumAttribs = LoadFromAddress(pEntity+view_as<Address>(offs+16), NumberType_Int32);
+	int iNumAttribs = LoadFromAddressOffset(pAttributeList, 0x10, NumberType_Int32);
 	int[] iAttribIndices = new int[size];
 	for (int i = 0; i < iNumAttribs && i < size; i++) {
 		// THIS IS HOW YOU GET THE ATTRIBUTES ON AN ITEM!
-		iAttribIndices[i] = LoadFromAddress(pAttribList+view_as<Address>(i*16+4), NumberType_Int16);
+		Address pAttributeEntry = pAttribListData + view_as<Address>(i * 0x10);
+		iAttribIndices[i] = LoadFromAddressOffset(pAttributeEntry, 0x04, NumberType_Int16);
 	}
 	SetNativeArray(2, iAttribIndices, size);
 	return iNumAttribs;
@@ -607,7 +607,7 @@ static bool GetAttributeDefIndexByName(const char[] name, int &iDefIndex) {
 		return false;
 	}
 	
-	iDefIndex = LoadFromAddress(pAttribDef + view_as<Address>(4), NumberType_Int16);
+	iDefIndex = LoadFromAddressOffset(pAttribDef, 0x04, NumberType_Int16);
 	return true;
 }
 
@@ -617,9 +617,21 @@ static Address GetEntityAttributeManager(int entity) {
 		return Address_Null;
 	}
 	
-	Address pAttributeManager = view_as<Address>(LoadFromAddress(pAttributeList+view_as<Address>(24), NumberType_Int32));
+	Address pAttributeManager = DereferencePointer(pAttributeList, .offset = 0x18);
 	AssertValidAddress(pAttributeManager);
 	return pAttributeManager;
+}
+
+stock int LoadFromAddressOffset(Address addr, int offset, NumberType size) {
+	return LoadFromAddress(addr + view_as<Address>(offset), size);
+}
+
+stock void StoreToAddressOffset(Address addr, int offset, int data, NumberType size) {
+	StoreToAddress(addr + view_as<Address>(offset), data, size);
+}
+
+stock Address DereferencePointer(Address addr, int offset = 0) {
+	return view_as<Address>(LoadFromAddressOffset(addr, offset, NumberType_Int32));
 }
 
 /**
