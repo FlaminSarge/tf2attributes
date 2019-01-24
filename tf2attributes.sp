@@ -229,11 +229,6 @@ public int Native_GetStaticAttribs(Handle plugin, int numParams)
 		size = GetNativeCell(4);
 	}
 	
-	if (hSDKGetItemDefinition == INVALID_HANDLE)
-	{
-		return ThrowNativeError(SP_ERROR_NATIVE, "TF2Attrib_GetStaticAttribs: Could not find call to CEconItemSchema::GetItemDefinition");
-	}
-	
 	if (size <= 0)
 	{
 		return ThrowNativeError(SP_ERROR_NATIVE, "TF2Attrib_GetStaticAttribs: Array size (iMaxLen=%d) must be greater than 0", size);
@@ -299,10 +294,6 @@ public int Native_GetSOCAttribs(Handle plugin, int numParams)
 	if (!IsValidEntity(iEntity))
 	{
 		return ThrowNativeError(SP_ERROR_NATIVE, "TF2Attrib_GetSOCAttribs: Invalid entity (iEntity=%d) passed", iEntity);
-	}
-	if (hSDKGetSOCData == INVALID_HANDLE)
-	{
-		return ThrowNativeError(SP_ERROR_NATIVE, "TF2Attrib_GetSOCAttribs: Could not find call to CEconItemView::GetSOCData");
 	}
 	
 	if (size <= 0)
@@ -579,7 +570,6 @@ public int Native_GetSetBonus(Handle plugin, int numParams)
 
 stock bool ClearAttributeCache(int entity)
 {
-	if (hSDKOnAttribValuesChanged == INVALID_HANDLE) return false;
 	if (entity <= 0 || !IsValidEntity(entity)) return false;
 	int offs = GetEntSendPropOffs(entity, "m_AttributeList", true);
 	if (offs <= 0) return false;
