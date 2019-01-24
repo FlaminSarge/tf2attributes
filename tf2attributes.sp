@@ -7,7 +7,7 @@
 
 #define PLUGIN_NAME		"[TF2] TF2Attributes"
 #define PLUGIN_AUTHOR		"FlaminSarge"
-#define PLUGIN_VERSION		"1.3.3@nosoop-1.0.0"
+#define PLUGIN_VERSION		"1.3.3@nosoop-1.0.1"
 #define PLUGIN_CONTACT		"http://forums.alliedmods.net/showthread.php?t=210221"
 #define PLUGIN_DESCRIPTION	"Functions to add/get attributes for TF2 players/items"
 
@@ -217,7 +217,7 @@ public int Native_GetStaticAttribs(Handle plugin, int numParams) {
 		return ThrowNativeError(SP_ERROR_NATIVE, "TF2Attrib_GetStaticAttribs: Array size (iMaxLen=%d) must be greater than 0", size);
 	}
 	
-	Address pSchema = SDKCall(hSDKSchema);
+	Address pSchema = GetItemSchema();
 	if (!pSchema) {
 		return -1;
 	}
@@ -314,7 +314,7 @@ public int Native_SetAttrib(Handle plugin, int numParams) {
 	}
 	
 	Address pEntity = GetEntityAddress(entity);
-	Address pSchema = SDKCall(hSDKSchema);
+	Address pSchema = GetItemSchema();
 	if (!pSchema) {
 		return false;
 	}
@@ -343,7 +343,7 @@ public int Native_SetAttribByID(Handle plugin, int numParams) {
 	}
 	
 	Address pEntity = GetEntityAddress(entity);
-	Address pSchema = SDKCall(hSDKSchema);
+	Address pSchema = GetItemSchema();
 	if (!pSchema) {
 		return false;
 	}
@@ -372,7 +372,7 @@ public int Native_GetAttrib(Handle plugin, int numParams) {
 	}
 	
 	Address pEntity = GetEntityAddress(entity);
-	Address pSchema = SDKCall(hSDKSchema);
+	Address pSchema = GetItemSchema();
 	if (!pSchema) {
 		return 0;
 	}
@@ -422,7 +422,7 @@ public int Native_Remove(Handle plugin, int numParams) {
 	}
 	
 	Address pEntity = GetEntityAddress(entity);
-	Address pSchema = SDKCall(hSDKSchema);
+	Address pSchema = GetItemSchema();
 	if (!pSchema) {
 		return false;
 	}
@@ -451,7 +451,7 @@ public int Native_RemoveByID(Handle plugin, int numParams) {
 	}
 	
 	Address pEntity = GetEntityAddress(entity);
-	Address pSchema = SDKCall(hSDKSchema);
+	Address pSchema = GetItemSchema();
 	if (!pSchema) {
 		return false;
 	}
@@ -597,6 +597,10 @@ public int Native_ListIDs(Handle plugin, int numParams) {
 	}
 	SetNativeArray(2, iAttribIndices, size);
 	return iNumAttribs;
+}
+
+static Address GetItemSchema() {
+	return SDKCall(hSDKSchema);
 }
 
 //TODO Stop using Address_MinimumValid once verified that logic still works without it
