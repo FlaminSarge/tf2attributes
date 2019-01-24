@@ -27,6 +27,8 @@ new Handle:hSDKGetAttributeByID;
 new Handle:hSDKOnAttribValuesChanged;
 new Handle:hSDKRemoveAttribute;
 new Handle:hSDKDestroyAllAttributes;
+new Handle:hSDKAddCustomAttribute;
+new Handle:hSDKRemoveCustomAttribute;
 
 //new Handle:hPluginReady;
 new bool:g_bPluginReady = false;
@@ -58,6 +60,8 @@ public APLRes:AskPluginLoad2(Handle:myself, bool:late, String:error[], err_max)
 	CreateNative("TF2Attrib_GetSOCAttribs", Native_GetSOCAttribs);
 	CreateNative("TF2Attrib_IsIntegerValue", Native_IsIntegerValue);
 	CreateNative("TF2Attrib_IsReady", Native_IsReady);
+	CreateNative("TF2Attrib_AddCustomPlayerAttribute", Native_AddCustomAttribute);
+	CreateNative("TF2Attrib_RemoveCustomPlayerAttribute", Native_RemoveCustomAttribute);
 	//hPluginReady = CreateGlobalForward("TF2Attrib_Ready", ET_Ignore);
 
 	//unused, backcompat I guess?
@@ -193,6 +197,28 @@ public OnPluginStart()
 	if (hSDKOnAttribValuesChanged == INVALID_HANDLE)
 	{
 		SetFailState("Could not initialize call to CAttributeManager::OnAttributeValuesChanged");
+		bPluginReady = false;
+	}
+
+	StartPrepSDKCall(SDKCall_Player);
+	PrepSDKCall_SetFromConf(hGameConf, SDKConf_Signature, "CTFPlayer::AddCustomAttribute");
+	PrepSDKCall_AddParameter(SDKType_String, SDKPass_Pointer);
+	PrepSDKCall_AddParameter(SDKType_Float, SDKPass_Plain);
+	PrepSDKCall_AddParameter(SDKType_Float, SDKPass_Plain);
+	hSDKAddCustomAttribute = EndPrepSDKCall();
+	if (hSDKAddCustomAttribute == INVALID_HANDLE)
+	{
+		SetFailState("Could not initialize call to CTFPlayer::AddCustomAttribute");
+		bPluginReady = false;
+	}
+
+	StartPrepSDKCall(SDKCall_Player);
+	PrepSDKCall_SetFromConf(hGameConf, SDKConf_Signature, "CTFPlayer::RemoveCustomAttribute");
+	PrepSDKCall_AddParameter(SDKType_String, SDKPass_Pointer);
+	hSDKRemoveCustomAttribute = EndPrepSDKCall();
+	if (hSDKRemoveCustomAttribute == INVALID_HANDLE)
+	{
+		SetFailState("Could not initialize call to CTFPlayer::RemoveCustomAttribute");
 		bPluginReady = false;
 	}
 
@@ -602,6 +628,32 @@ public Native_RemoveAll(Handle:plugin, numParams)
 //	}
 
 	return true;
+}
+
+/* native void TF2Attrib_AddCustomPlayerAttribute(int client, const char[] strAttrib, float flValue, float flDuration = -1.0); */
+public int Native_AddCustomAttribute(Handle plugin, int numParams)
+{
+	char strAttrib[128];
+	
+	int client = GetNativeCell(1);
+	GetNativeString(2, strAttrib, sizeof(strAttrib));
+	float flValue = GetNativeCell(3);
+	float flDuration = GetNativeCell(4);
+	
+	SDKCall(hSDKAddCustomAttribute, client, strAttrib, flValue, flDuration);
+	return;
+}
+
+/* native void TF2Attrib_RemoveCustomPlayerAttribute(int client, const char[] strAttrib); */
+public int Native_RemoveCustomAttribute(Handle plugin, int numParams)
+{
+	char strAttrib[128];
+	
+	int client = GetNativeCell(1);
+	GetNativeString(2, strAttrib, sizeof(strAttrib));
+	
+	SDKCall(hSDKRemoveCustomAttribute, client, strAttrib);
+	return;
 }
 
 public Native_SetID(Handle:plugin, numParams)
