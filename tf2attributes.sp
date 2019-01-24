@@ -7,7 +7,7 @@
 
 #define PLUGIN_NAME		"[TF2] TF2Attributes"
 #define PLUGIN_AUTHOR		"FlaminSarge"
-#define PLUGIN_VERSION		"1.3.3@nosoop-1.0.8"
+#define PLUGIN_VERSION		"1.3.3@nosoop-1.0.9"
 #define PLUGIN_CONTACT		"http://forums.alliedmods.net/showthread.php?t=210221"
 #define PLUGIN_DESCRIPTION	"Functions to add/get attributes for TF2 players/items"
 
@@ -204,8 +204,9 @@ stock int GetStaticAttribs(Address pItemDef, int[] iAttribIndices, int[] iAttrib
 	
 	for (int i = 0; i < iNumAttribs && i < size; i++) {
 		// THIS IS HOW YOU GET THE ATTRIBUTES ON AN ITEMDEF!
-		iAttribIndices[i] = LoadFromAddress(pAttribList+view_as<Address>(i*8), NumberType_Int16);
-		iAttribValues[i] = LoadFromAddress(pAttribList+view_as<Address>(i*8+4), NumberType_Int32);
+		Address pStaticAttrib = pAttribList + view_as<Address>(i * 8);
+		iAttribIndices[i] = LoadFromAddress(pStaticAttrib, NumberType_Int16);
+		iAttribValues[i] = LoadFromAddress(pStaticAttrib + view_as<Address>(4), NumberType_Int32);
 	}
 	return iNumAttribs;
 }
