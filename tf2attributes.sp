@@ -7,7 +7,7 @@
 
 #define PLUGIN_NAME		"[TF2] TF2Attributes"
 #define PLUGIN_AUTHOR		"FlaminSarge"
-#define PLUGIN_VERSION		"1.3.3@nosoop-1.0.3"
+#define PLUGIN_VERSION		"1.3.3@nosoop-1.0.4"
 #define PLUGIN_CONTACT		"http://forums.alliedmods.net/showthread.php?t=210221"
 #define PLUGIN_DESCRIPTION	"Functions to add/get attributes for TF2 players/items"
 
@@ -336,13 +336,8 @@ public int Native_SetAttribByID(Handle plugin, int numParams) {
 		return false;
 	}
 	
-	Address pSchema = GetItemSchema();
-	if (!pSchema) {
-		return false;
-	}
-	
-	Address pAttribDef = SDKCall(hSDKGetAttributeDef, pSchema, iAttrib);
-	if (!IsValidAddress(pAttribDef)) {
+	Address pAttribDef = GetAttributeDefinitionByID(iAttrib);
+	if (!pAttribDef) {
 		return ThrowNativeError(SP_ERROR_NATIVE, "TF2Attrib_SetByDefIndex: Attribute %d not valid", iAttrib);
 	}
 	
@@ -430,13 +425,8 @@ public int Native_RemoveByID(Handle plugin, int numParams) {
 		return false;
 	}
 	
-	Address pSchema = GetItemSchema();
-	if (!pSchema) {
-		return false;
-	}
-
-	Address pAttribDef = SDKCall(hSDKGetAttributeDef, pSchema, iAttrib);
-	if (!IsValidAddress(pAttribDef)) {
+	Address pAttribDef = GetAttributeDefinitionByID(iAttrib);
+	if (!pAttribDef) {
 		return ThrowNativeError(SP_ERROR_NATIVE, "TF2Attrib_RemoveByDefIndex: Attribute %d not valid", iAttrib);
 	}
 	
@@ -594,6 +584,14 @@ static Address GetAttributeDefinitionByName(const char[] name) {
 		return Address_Null;
 	}
 	return SDKCall(hSDKGetAttributeDefByName, pSchema, name);
+}
+
+static Address GetAttributeDefinitionByID(int id) {
+	Address pSchema = GetItemSchema();
+	if (!pSchema) {
+		return Address_Null;
+	}
+	return SDKCall(hSDKGetAttributeDef, pSchema, id);
 }
 
 //TODO Stop using Address_MinimumValid once verified that logic still works without it
