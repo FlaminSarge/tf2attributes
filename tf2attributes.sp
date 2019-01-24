@@ -7,7 +7,7 @@
 
 #define PLUGIN_NAME		"[TF2] TF2Attributes"
 #define PLUGIN_AUTHOR		"FlaminSarge"
-#define PLUGIN_VERSION		"1.3.3"
+#define PLUGIN_VERSION		"1.3.3@nosoop-1.0.0"
 #define PLUGIN_CONTACT		"http://forums.alliedmods.net/showthread.php?t=210221"
 #define PLUGIN_DESCRIPTION	"Functions to add/get attributes for TF2 players/items"
 
@@ -35,6 +35,7 @@ public APLRes AskPluginLoad2(Handle myself, bool late, char[] error, int err_max
 {
 	char game[8];
 	GetGameFolderName(game, sizeof(game));
+	
 	if (strncmp(game, "tf", 2, false) != 0)
 	{
 		strcopy(error, err_max, "Plugin only available for TF2 and possibly TF2Beta");
@@ -79,11 +80,9 @@ public int Native_IsReady(Handle plugin, int numParams)
 public void OnPluginStart()
 {
 	Handle hGameConf = LoadGameConfigFile("tf2.attributes");
-	bool bPluginReady = true;	//we don't want to set g_bPluginReady BEFORE any of the checks... do we? W/e, I never asked for this.
-	if (hGameConf == INVALID_HANDLE)
+	if (!hGameConf)
 	{
 		SetFailState("Could not locate gamedata file tf2.attributes.txt for TF2Attributes, pausing plugin");
-		bPluginReady = false;
 	}
 
 	StartPrepSDKCall(SDKCall_Raw);
@@ -91,33 +90,27 @@ public void OnPluginStart()
 	PrepSDKCall_AddParameter(SDKType_PlainOldData, SDKPass_Plain);
 	PrepSDKCall_SetReturnInfo(SDKType_PlainOldData, SDKPass_Plain);	//Returns address of CEconItemDefinition
 	hSDKGetItemDefinition = EndPrepSDKCall();
-	if (hSDKGetItemDefinition == INVALID_HANDLE)
+	if (!hSDKGetItemDefinition)
 	{
-		delete hGameConf;
 		SetFailState("Could not initialize call to CEconItemSchema::GetItemDefinition");
-		bPluginReady = false;
 	}
 
 	StartPrepSDKCall(SDKCall_Raw);
 	PrepSDKCall_SetFromConf(hGameConf, SDKConf_Signature, "CEconItemView::GetSOCData");
 	PrepSDKCall_SetReturnInfo(SDKType_PlainOldData, SDKPass_Plain);	//Returns address of CEconItem
 	hSDKGetSOCData = EndPrepSDKCall();
-	if (hSDKGetSOCData == INVALID_HANDLE)
+	if (!hSDKGetSOCData)
 	{
-		delete hGameConf;
 		SetFailState("Could not initialize call to CEconItemView::GetSOCData");
-		bPluginReady = false;
 	}
 
 	StartPrepSDKCall(SDKCall_Static);
 	PrepSDKCall_SetFromConf(hGameConf, SDKConf_Signature, "GEconItemSchema");
 	PrepSDKCall_SetReturnInfo(SDKType_PlainOldData, SDKPass_Plain);	//Returns address of CEconItemSchema
 	hSDKSchema = EndPrepSDKCall();
-	if (hSDKSchema == INVALID_HANDLE)
+	if (!hSDKSchema)
 	{
-		delete hGameConf;
 		SetFailState("Could not initialize call to GEconItemSchema");
-		bPluginReady = false;
 	}
 
 	StartPrepSDKCall(SDKCall_Raw);
@@ -125,11 +118,9 @@ public void OnPluginStart()
 	PrepSDKCall_AddParameter(SDKType_PlainOldData, SDKPass_Plain);
 	PrepSDKCall_SetReturnInfo(SDKType_PlainOldData, SDKPass_Plain);	//Returns address of a CEconItemAttributeDefinition
 	hSDKGetAttributeDef = EndPrepSDKCall();
-	if (hSDKGetAttributeDef == INVALID_HANDLE)
+	if (!hSDKGetAttributeDef)
 	{
-		delete hGameConf;
 		SetFailState("Could not initialize call to CEconItemSchema::GetAttributeDefinition");
-		bPluginReady = false;
 	}
 
 	StartPrepSDKCall(SDKCall_Raw);
@@ -137,11 +128,9 @@ public void OnPluginStart()
 	PrepSDKCall_AddParameter(SDKType_String, SDKPass_Pointer);
 	PrepSDKCall_SetReturnInfo(SDKType_PlainOldData, SDKPass_Plain);	//Returns address of a CEconItemAttributeDefinition
 	hSDKGetAttributeDefByName = EndPrepSDKCall();
-	if (hSDKGetAttributeDefByName == INVALID_HANDLE)
+	if (!hSDKGetAttributeDefByName)
 	{
-		delete hGameConf;
 		SetFailState("Could not initialize call to CEconItemSchema::GetAttributeDefinitionByName");
-		bPluginReady = false;
 	}
 
 	StartPrepSDKCall(SDKCall_Raw);
@@ -149,11 +138,9 @@ public void OnPluginStart()
 	PrepSDKCall_AddParameter(SDKType_PlainOldData, SDKPass_Plain);
 	PrepSDKCall_SetReturnInfo(SDKType_PlainOldData, SDKPass_Plain);	//not a clue what this return is
 	hSDKRemoveAttribute = EndPrepSDKCall();
-	if (hSDKRemoveAttribute == INVALID_HANDLE)
+	if (!hSDKRemoveAttribute)
 	{
-		delete hGameConf;
 		SetFailState("Could not initialize call to CAttributeList::RemoveAttribute");
-		bPluginReady = false;
 	}
 
 	StartPrepSDKCall(SDKCall_Raw);
@@ -167,22 +154,18 @@ public void OnPluginStart()
 	//And I don't know what happens when you hit ent index 2047
 
 	hSDKSetRuntimeValue = EndPrepSDKCall();
-	if (hSDKSetRuntimeValue == INVALID_HANDLE)
+	if (!hSDKSetRuntimeValue)
 	{
-		delete hGameConf;
 		SetFailState("Could not initialize call to CAttributeList::SetRuntimeAttributeValue");
-		bPluginReady = false;
 	}
 
 	StartPrepSDKCall(SDKCall_Raw);
 	PrepSDKCall_SetFromConf(hGameConf, SDKConf_Signature, "CAttributeList::DestroyAllAttributes");
 	PrepSDKCall_SetReturnInfo(SDKType_PlainOldData, SDKPass_Plain);
 	hSDKDestroyAllAttributes = EndPrepSDKCall();
-	if (hSDKDestroyAllAttributes == INVALID_HANDLE)
+	if (!hSDKDestroyAllAttributes)
 	{
-		delete hGameConf;
 		SetFailState("Could not initialize call to CAttributeList::DestroyAllAttributes");
-		bPluginReady = false;
 	}
 
 	StartPrepSDKCall(SDKCall_Raw);
@@ -190,26 +173,22 @@ public void OnPluginStart()
 	PrepSDKCall_AddParameter(SDKType_PlainOldData, SDKPass_Plain);
 	PrepSDKCall_SetReturnInfo(SDKType_PlainOldData, SDKPass_Plain);	//Returns address of a CEconItemAttribute
 	hSDKGetAttributeByID = EndPrepSDKCall();
-	if (hSDKGetAttributeByID == INVALID_HANDLE)
+	if (!hSDKGetAttributeByID)
 	{
-		delete hGameConf;
 		SetFailState("Could not initialize call to CAttributeList::GetAttributeByID");
-		bPluginReady = false;
 	}
 
 	StartPrepSDKCall(SDKCall_Raw);
 	PrepSDKCall_SetFromConf(hGameConf, SDKConf_Virtual, "CAttributeManager::OnAttributeValuesChanged");
 	hSDKOnAttribValuesChanged = EndPrepSDKCall();
-	if (hSDKOnAttribValuesChanged == INVALID_HANDLE)
+	if (!hSDKOnAttribValuesChanged)
 	{
-		delete hGameConf;
 		SetFailState("Could not initialize call to CAttributeManager::OnAttributeValuesChanged");
-		bPluginReady = false;
 	}
 
 	CreateConVar("tf2attributes_version", PLUGIN_VERSION, "TF2Attributes version number", FCVAR_NOTIFY);
 
-	g_bPluginReady = bPluginReady;	//I really never asked for this.
+	g_bPluginReady = true;
 	
 	delete hGameConf;
 }
