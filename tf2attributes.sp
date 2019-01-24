@@ -7,7 +7,7 @@
 
 #define PLUGIN_NAME		"[TF2] TF2Attributes"
 #define PLUGIN_AUTHOR		"FlaminSarge"
-#define PLUGIN_VERSION		"1.3.3@nosoop-1.0.11"
+#define PLUGIN_VERSION		"1.3.3@nosoop-1.0.12"
 #define PLUGIN_CONTACT		"http://forums.alliedmods.net/showthread.php?t=210221"
 #define PLUGIN_DESCRIPTION	"Functions to add/get attributes for TF2 players/items"
 
@@ -249,18 +249,23 @@ stock int GetSOCAttribs(int iEntity, int[] iAttribIndices, int[] iAttribValues, 
 	
 	pEconItemView += view_as<Address>(iCEIVOffset);
 	
+	// pEconItem may be null if the item doesn't have SOC data (i.e., not from the item server)
 	Address pEconItem = SDKCall(hSDKGetSOCData, pEconItemView);
-	AssertValidAddress(pEconItem);
+	if (!pEconItem) {
+		return 0;
+	}
 	
 	Address pCustomData = view_as<Address>(LoadFromAddress(pEconItem + view_as<Address>(0x34), NumberType_Int32));
 	if (pCustomData) {
 		AssertValidAddress(pCustomData);
 		int iCount = LoadFromAddress(pCustomData + view_as<Address>(0x0C), NumberType_Int32);
+		
+		Address pCustomDataArray = view_as<Address>(LoadFromAddress(pCustomData, NumberType_Int32));
 		for (int i = 0; i < iCount && i < size; ++i) {
-			Address pAttribDef = view_as<Address>(LoadFromAddress(pCustomData, NumberType_Int32) + (i * 8));
-			Address pAttribVal = view_as<Address>(LoadFromAddress(pCustomData, NumberType_Int32) + (i * 8) + 4);
-			iAttribIndices[i] = LoadFromAddress(pAttribDef, NumberType_Int16);
-			iAttribValues[i] = LoadFromAddress(pAttribVal, NumberType_Int32);
+			Address pSOCAttribEntry = pCustomDataArray + view_as<Address>(i * 8);
+			
+			iAttribIndices[i] = LoadFromAddress(pSOCAttribEntry, NumberType_Int16);
+			iAttribValues[i] = LoadFromAddress(pSOCAttribEntry + view_as<Address>(4), NumberType_Int32);
 		}
 		return iCount;
 	}
