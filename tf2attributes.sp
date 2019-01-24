@@ -7,7 +7,7 @@
 
 #define PLUGIN_NAME		"[TF2] TF2Attributes"
 #define PLUGIN_AUTHOR		"FlaminSarge"
-#define PLUGIN_VERSION		"1.3.3@nosoop-1.0.2"
+#define PLUGIN_VERSION		"1.3.3@nosoop-1.0.3"
 #define PLUGIN_CONTACT		"http://forums.alliedmods.net/showthread.php?t=210221"
 #define PLUGIN_DESCRIPTION	"Functions to add/get attributes for TF2 players/items"
 
@@ -313,12 +313,7 @@ public int Native_SetAttrib(Handle plugin, int numParams) {
 		return false;
 	}
 	
-	Address pSchema = GetItemSchema();
-	if (!pSchema) {
-		return false;
-	}
-	
-	Address pAttribDef = SDKCall(hSDKGetAttributeDefByName, pSchema, strAttrib);
+	Address pAttribDef = GetAttributeDefinitionByName(strAttrib);
 	if (!IsValidAddress(pAttribDef)) {
 		return ThrowNativeError(SP_ERROR_NATIVE, "TF2Attrib_SetByName: Attribute '%s' not valid", strAttrib);
 	}
@@ -369,13 +364,8 @@ public int Native_GetAttrib(Handle plugin, int numParams) {
 		return 0;
 	}
 	
-	Address pSchema = GetItemSchema();
-	if (!pSchema) {
-		return 0;
-	}
-	
-	Address pAttribDef = SDKCall(hSDKGetAttributeDefByName, pSchema, strAttrib);
-	if (!IsValidAddress(pAttribDef)) {
+	Address pAttribDef = GetAttributeDefinitionByName(strAttrib);
+	if (!pAttribDef) {
 		return ThrowNativeError(SP_ERROR_NATIVE, "TF2Attrib_GetByName: Attribute '%s' not valid", strAttrib);
 	}
 	
@@ -417,13 +407,8 @@ public int Native_Remove(Handle plugin, int numParams) {
 		return false;
 	}
 	
-	Address pSchema = GetItemSchema();
-	if (!pSchema) {
-		return false;
-	}
-	
-	Address pAttribDef = SDKCall(hSDKGetAttributeDefByName, pSchema, strAttrib);
-	if (!IsValidAddress(pAttribDef)) {
+	Address pAttribDef = GetAttributeDefinitionByName(strAttrib);
+	if (!pAttribDef) {
 		return ThrowNativeError(SP_ERROR_NATIVE, "TF2Attrib_RemoveByName: Attribute '%s' not valid", strAttrib);
 	}
 	
@@ -601,6 +586,14 @@ static Address GetEntityAttributeList(int entity) {
 		return GetEntityAddress(entity) + view_as<Address>(offsAttributeList);
 	}
 	return Address_Null;
+}
+
+static Address GetAttributeDefinitionByName(const char[] name) {
+	Address pSchema = GetItemSchema();
+	if (!pSchema) {
+		return Address_Null;
+	}
+	return SDKCall(hSDKGetAttributeDefByName, pSchema, name);
 }
 
 //TODO Stop using Address_MinimumValid once verified that logic still works without it
