@@ -7,7 +7,7 @@
 
 #define PLUGIN_NAME		"[TF2] TF2Attributes"
 #define PLUGIN_AUTHOR		"FlaminSarge"
-#define PLUGIN_VERSION		"1.3.3@nosoop-1.0.12"
+#define PLUGIN_VERSION		"1.3.3@nosoop-1.0.13"
 #define PLUGIN_CONTACT		"http://forums.alliedmods.net/showthread.php?t=210221"
 #define PLUGIN_DESCRIPTION	"Functions to add/get attributes for TF2 players/items"
 
@@ -240,14 +240,10 @@ stock int GetSOCAttribs(int iEntity, int[] iAttribIndices, int[] iAttribValues, 
 	if (size <= 0) {
 		return -1;
 	}
-	int iCEIVOffset = GetEntSendPropOffs(iEntity, "m_Item", true);
-	if (iCEIVOffset <= 0) {
+	Address pEconItemView = GetEntityEconItemView(iEntity);
+	if (!pEconItemView) {
 		return -1;
 	}
-	Address pEconItemView = GetEntityAddress(iEntity);
-	AssertValidAddress(pEconItemView);
-	
-	pEconItemView += view_as<Address>(iCEIVOffset);
 	
 	// pEconItem may be null if the item doesn't have SOC data (i.e., not from the item server)
 	Address pEconItem = SDKCall(hSDKGetSOCData, pEconItemView);
@@ -567,6 +563,14 @@ public int Native_ListIDs(Handle plugin, int numParams) {
 
 static Address GetItemSchema() {
 	return SDKCall(hSDKSchema);
+}
+
+static Address GetEntityEconItemView(int entity) {
+	int iCEIVOffset = GetEntSendPropOffs(entity, "m_Item", true);
+	if (iCEIVOffset > 0) {
+		return GetEntityAddress(entity) + view_as<Address>(iCEIVOffset);
+	}
+	return Address_Null;
 }
 
 static Address GetEntityAttributeList(int entity) {
