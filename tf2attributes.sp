@@ -178,6 +178,7 @@ public void OnPluginStart() {
 	delete hGameConf;
 }
 
+/* native bool TF2Attrib_IsIntegerValue(int iDefIndex); */
 public int Native_IsIntegerValue(Handle plugin, int numParams) {
 	int iDefIndex = GetNativeCell(1);
 	switch (iDefIndex) {
@@ -206,6 +207,7 @@ stock int GetStaticAttribs(Address pItemDef, int[] iAttribIndices, int[] iAttrib
 	return iNumAttribs;
 }
 
+/* native int TF2Attrib_GetStaticAttribs(int iItemDefIndex, int[] iAttribIndices, float[] flAttribValues, int iMaxLen=16); */
 public int Native_GetStaticAttribs(Handle plugin, int numParams) {
 	int iItemDefIndex = GetNativeCell(1);
 	int size = 16;
@@ -275,6 +277,7 @@ stock int GetSOCAttribs(int iEntity, int[] iAttribIndices, int[] iAttribValues, 
 	return 0;
 }
 
+/* native int TF2Attrib_GetSOCAttribs(int iEntity, int[] iAttribIndices, float[] flAttribValues, int iMaxLen=16); */
 public int Native_GetSOCAttribs(Handle plugin, int numParams) {
 	int iEntity = GetNativeCell(1);
 	int size = 16;
@@ -298,6 +301,7 @@ public int Native_GetSOCAttribs(Handle plugin, int numParams) {
 	return iCount;
 }
 
+/* native bool TF2Attrib_SetByName(int iEntity, char[] strAttrib, float flValue); */
 public int Native_SetAttrib(Handle plugin, int numParams) {
 	int entity = GetNativeCell(1);
 	if (!IsValidEntity(entity)) {
@@ -322,6 +326,7 @@ public int Native_SetAttrib(Handle plugin, int numParams) {
 	return true;
 }
 
+/* native bool TF2Attrib_SetByDefIndex(int iEntity, int iDefIndex, float flValue); */
 public int Native_SetAttribByID(Handle plugin, int numParams) {
 	int entity = GetNativeCell(1);
 	if (!IsValidEntity(entity)) {
@@ -345,6 +350,7 @@ public int Native_SetAttribByID(Handle plugin, int numParams) {
 	return true;
 }
 
+/* native Address TF2Attrib_GetByName(int iEntity, char[] strAttrib); */
 public int Native_GetAttrib(Handle plugin, int numParams) {
 	int entity = GetNativeCell(1);
 	if (!IsValidEntity(entity)) {
@@ -370,6 +376,7 @@ public int Native_GetAttrib(Handle plugin, int numParams) {
 	return (!IsValidAddress(pAttrib) ? 0 : view_as<int>(pAttrib));
 }
 
+/* native Address TF2Attrib_GetByDefIndex(int iEntity, int iDefIndex); */
 public int Native_GetAttribByID(Handle plugin, int numParams) {
 	int entity = GetNativeCell(1);
 	if (!IsValidEntity(entity)) {
@@ -387,6 +394,7 @@ public int Native_GetAttribByID(Handle plugin, int numParams) {
 	return (!IsValidAddress(pAttrib) ? 0 : view_as<int>(pAttrib));
 }
 
+/* native bool TF2Attrib_RemoveByName(int iEntity, char[] strAttrib); */
 public int Native_Remove(Handle plugin, int numParams) {
 	int entity = GetNativeCell(1);
 	if (!IsValidEntity(entity)) {
@@ -411,6 +419,7 @@ public int Native_Remove(Handle plugin, int numParams) {
 	return true;
 }
 
+/* native bool TF2Attrib_RemoveByDefIndex(int iEntity, int iDefIndex); */
 public int Native_RemoveByID(Handle plugin, int numParams) {
 	int entity = GetNativeCell(1);
 	if (!IsValidEntity(entity)) {
@@ -434,6 +443,7 @@ public int Native_RemoveByID(Handle plugin, int numParams) {
 	return true;
 }
 
+/* native bool TF2Attrib_RemoveAll(int iEntity); */
 public int Native_RemoveAll(Handle plugin, int numParams) {
 	int entity = GetNativeCell(1);
 	if (!IsValidEntity(entity)) {
@@ -450,23 +460,27 @@ public int Native_RemoveAll(Handle plugin, int numParams) {
 	return true;
 }
 
+/* native void TF2Attrib_SetDefIndex(Address pAttrib, int iDefIndex); */
 public int Native_SetID(Handle plugin, int numParams) {
 	Address pAttrib = GetNativeCell(1);
 	int iDefIndex = GetNativeCell(2);
 	StoreToAddress(pAttrib+view_as<Address>(4), iDefIndex, NumberType_Int16);
 }
 
+/* native int TF2Attrib_GetDefIndex(Address pAttrib); */
 public int Native_GetID(Handle plugin, int numParams) {
 	Address pAttrib = GetNativeCell(1);
 	return LoadFromAddress(pAttrib+view_as<Address>(4), NumberType_Int16);
 }
 
+/* native void TF2Attrib_SetValue(Address pAttrib, float flValue); */
 public int Native_SetVal(Handle plugin, int numParams) {
 	Address pAttrib = GetNativeCell(1);
 	int flVal = GetNativeCell(2);	//It's a float but avoiding tag mismatch warnings from StoreToAddress
 	StoreToAddress(pAttrib+view_as<Address>(8), flVal, NumberType_Int32);
 }
 
+/* native float TF2Attrib_GetValue(Address pAttrib); */
 public int Native_GetVal(Handle plugin, int numParams) {
 	Address pAttrib = GetNativeCell(1);
 	return LoadFromAddress(pAttrib+view_as<Address>(8), NumberType_Int32);
@@ -480,12 +494,14 @@ public int Native_GetInitialVal(Handle plugin, int numParams) {
 	return ThrowNativeError(SP_ERROR_NATIVE, "TF2Attrib_GetInitialValue: m_flInitialValue is no longer present on attributes");
 }
 
+/* native void TF2Attrib_SetRefundableCurrency(Address pAttrib, int nCurrency); */
 public int Native_SetCurrency(Handle plugin, int numParams) {
 	Address pAttrib = GetNativeCell(1);
 	int nCurrency = GetNativeCell(2);
 	StoreToAddress(pAttrib+view_as<Address>(12), nCurrency, NumberType_Int32);
 }
 
+/* native int TF2Attrib_GetRefundableCurrency(Address pAttrib); */
 public int Native_GetCurrency(Handle plugin, int numParams) {
 	Address pAttrib = GetNativeCell(1);
 	return LoadFromAddress(pAttrib+view_as<Address>(12), NumberType_Int32);
@@ -519,6 +535,7 @@ stock bool ClearAttributeCache(int entity) {
 	return true;
 }
 
+/* native bool TF2Attrib_ClearCache(int iEntity); */
 public int Native_ClearCache(Handle plugin, int numParams) {
 	int entity = GetNativeCell(1);
 	if (!IsValidEntity(entity)) {
@@ -528,6 +545,7 @@ public int Native_ClearCache(Handle plugin, int numParams) {
 	return ClearAttributeCache(entity);
 }
 
+/* native int TF2Attrib_ListDefIndices(int iEntity, int[] iDefIndices, int iMaxLen=20); */
 public int Native_ListIDs(Handle plugin, int numParams) {
 	int entity = GetNativeCell(1);
 	int size = 20;
@@ -565,6 +583,8 @@ public int Native_ListIDs(Handle plugin, int numParams) {
 	SetNativeArray(2, iAttribIndices, size);
 	return iNumAttribs;
 }
+
+/* helper functions */
 
 static Address GetItemSchema() {
 	return SDKCall(hSDKSchema);
