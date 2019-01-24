@@ -7,7 +7,7 @@
 
 #define PLUGIN_NAME		"[TF2] TF2Attributes"
 #define PLUGIN_AUTHOR		"FlaminSarge"
-#define PLUGIN_VERSION		"1.3.3@nosoop-1.0.7"
+#define PLUGIN_VERSION		"1.3.3@nosoop-1.0.8"
 #define PLUGIN_CONTACT		"http://forums.alliedmods.net/showthread.php?t=210221"
 #define PLUGIN_DESCRIPTION	"Functions to add/get attributes for TF2 players/items"
 
@@ -64,10 +64,10 @@ public APLRes AskPluginLoad2(Handle myself, bool late, char[] error, int err_max
 	CreateNative("TF2Attrib_IsReady", Native_IsReady);
 
 	//unused, backcompat I guess?
-	CreateNative("TF2Attrib_SetInitialValue", Native_SetInitialVal);
-	CreateNative("TF2Attrib_GetInitialValue", Native_GetInitialVal);
-	CreateNative("TF2Attrib_SetIsSetBonus", Native_SetSetBonus);
-	CreateNative("TF2Attrib_GetIsSetBonus", Native_GetSetBonus);
+	CreateNative("TF2Attrib_SetInitialValue", Native_DeprecatedPropertyAccess);
+	CreateNative("TF2Attrib_GetInitialValue", Native_DeprecatedPropertyAccess);
+	CreateNative("TF2Attrib_SetIsSetBonus", Native_DeprecatedPropertyAccess);
+	CreateNative("TF2Attrib_GetIsSetBonus", Native_DeprecatedPropertyAccess);
 
 	RegPluginLibrary("tf2attributes");
 	return APLRes_Success;
@@ -485,14 +485,6 @@ public int Native_GetVal(Handle plugin, int numParams) {
 	return LoadFromAddress(pAttrib+view_as<Address>(8), NumberType_Int32);
 }
 
-public int Native_SetInitialVal(Handle plugin, int numParams) {
-	return ThrowNativeError(SP_ERROR_NATIVE, "TF2Attrib_SetInitialValue: m_flInitialValue is no longer present on attributes");
-}
-
-public int Native_GetInitialVal(Handle plugin, int numParams) {
-	return ThrowNativeError(SP_ERROR_NATIVE, "TF2Attrib_GetInitialValue: m_flInitialValue is no longer present on attributes");
-}
-
 /* native void TF2Attrib_SetRefundableCurrency(Address pAttrib, int nCurrency); */
 public int Native_SetCurrency(Handle plugin, int numParams) {
 	Address pAttrib = GetNativeCell(1);
@@ -506,12 +498,8 @@ public int Native_GetCurrency(Handle plugin, int numParams) {
 	return LoadFromAddress(pAttrib+view_as<Address>(12), NumberType_Int32);
 }
 
-public int Native_SetSetBonus(Handle plugin, int numParams) {
-	return ThrowNativeError(SP_ERROR_NATIVE, "TF2Attrib_SetIsSetBonus: m_bSetBonus is no longer present on attributes");
-}
-
-public int Native_GetSetBonus(Handle plugin, int numParams) {
-	return ThrowNativeError(SP_ERROR_NATIVE, "TF2Attrib_GetIsSetBonus: m_bSetBonus is no longer present on attributes");
+public int Native_DeprecatedPropertyAccess(Handle plugin, int numParams) {
+	return ThrowNativeError(SP_ERROR_NATIVE, "TF2Attributes:  Property associated with native function no longer exists");
 }
 
 stock bool ClearAttributeCache(int entity) {
