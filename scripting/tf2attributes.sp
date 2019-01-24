@@ -7,7 +7,7 @@
 
 #define PLUGIN_NAME		"[TF2] TF2Attributes"
 #define PLUGIN_AUTHOR		"FlaminSarge"
-#define PLUGIN_VERSION		"1.3.3@nosoop-1.1.0"
+#define PLUGIN_VERSION		"1.3.3@nosoop-1.2.0"
 #define PLUGIN_CONTACT		"http://forums.alliedmods.net/showthread.php?t=210221"
 #define PLUGIN_DESCRIPTION	"Functions to add/get attributes for TF2 players/items"
 
@@ -32,6 +32,7 @@ Handle hSDKGetAttributeByID;
 Handle hSDKOnAttribValuesChanged;
 Handle hSDKRemoveAttribute;
 Handle hSDKDestroyAllAttributes;
+Handle hSDKAddCustomAttribute;
 
 static bool g_bPluginReady = false;
 public APLRes AskPluginLoad2(Handle myself, bool late, char[] error, int err_max) {
@@ -62,6 +63,7 @@ public APLRes AskPluginLoad2(Handle myself, bool late, char[] error, int err_max
 	CreateNative("TF2Attrib_GetSOCAttribs", Native_GetSOCAttribs);
 	CreateNative("TF2Attrib_IsIntegerValue", Native_IsIntegerValue);
 	CreateNative("TF2Attrib_IsValidAttributeName", Native_IsValidAttributeName);
+	CreateNative("TF2Attrib_AddCustomPlayerAttribute", Native_AddCustomAttribute);
 	CreateNative("TF2Attrib_IsReady", Native_IsReady);
 
 	//unused, backcompat I guess?
@@ -173,6 +175,16 @@ public void OnPluginStart() {
 	hSDKOnAttribValuesChanged = EndPrepSDKCall();
 	if (!hSDKOnAttribValuesChanged) {
 		SetFailState("Could not initialize call to CAttributeManager::OnAttributeValuesChanged");
+	}
+	
+	StartPrepSDKCall(SDKCall_Player);
+	PrepSDKCall_SetFromConf(hGameConf, SDKConf_Signature, "CTFPlayer::AddCustomAttribute");
+	PrepSDKCall_AddParameter(SDKType_String, SDKPass_Pointer);
+	PrepSDKCall_AddParameter(SDKType_Float, SDKPass_Plain);
+	PrepSDKCall_AddParameter(SDKType_Float, SDKPass_Plain);
+	hSDKAddCustomAttribute = EndPrepSDKCall();
+	if (!hSDKAddCustomAttribute) {
+		SetFailState("Could not initialize call to CTFPlayer::AddCustomAttribute");
 	}
 	
 	CreateConVar("tf2attributes_version", PLUGIN_VERSION, "TF2Attributes version number", FCVAR_NOTIFY);
@@ -578,6 +590,19 @@ public int Native_IsValidAttributeName(Handle plugin, int numParams) {
 	GetNativeString(1, strAttrib, sizeof(strAttrib));
 	
 	return GetAttributeDefinitionByName(strAttrib)? true : false;
+}
+
+/* native void TF2Attrib_AddCustomPlayerAttribute(int client, const char[] strAttrib, float flValue, float flDuration = -1.0); */
+public int Native_AddCustomAttribute(Handle plugin, int numParams) {
+	char strAttrib[MAX_ATTRIBUTE_NAME_LENGTH];
+	
+	int client = GetNativeCell(1);
+	GetNativeString(2, strAttrib, sizeof(strAttrib));
+	float flValue = GetNativeCell(3);
+	float flDuration = GetNativeCell(4);
+	
+	SDKCall(hSDKAddCustomAttribute, client, strAttrib, flValue, flDuration);
+	return;
 }
 
 /* helper functions */

@@ -211,6 +211,18 @@ native bool TF2Attrib_IsIntegerValue(int iDefIndex);
  */
 native bool TF2Attrib_IsValidAttributeName(const char[] strAttrib);
 
+/** 
+ * Adds a custom, potentially temporary attribute to a player.
+ * 
+ * @param client			Client index to set the attribute on.
+ * @param strATtrib			Name of the attribute, as from the "name" key in items_game.
+ * @param flValue			Value to set m_flValue to.
+ * @param flDuration		Duration of the attribute.  If less than 0, the attribute will not be automatically removed.
+ * 
+ * @noreturn
+ */
+native void TF2Attrib_AddCustomPlayerAttribute(int client, const char[] strAttrib, float flValue, float flDuration = -1.0);
+
 /**
  * Gets whether the plugin loaded without ANY errors.
  * For the purpose of allowing dependencies to ignore the plugin if this returns false.
@@ -254,6 +266,7 @@ public __pl_tf2attributes_SetNTVOptional()
 	MarkNativeAsOptional("TF2Attrib_ListDefIndices");
 	MarkNativeAsOptional("TF2Attrib_IsIntegerValue");
 	MarkNativeAsOptional("TF2Attrib_IsValidAttributeName");
+	MarkNativeAsOptional("TF2Attrib_AddCustomPlayerAttribute");
 	
 	MarkNativeAsOptional("TF2Attrib_IsReady");
 }
