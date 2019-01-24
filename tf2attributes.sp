@@ -7,7 +7,7 @@
 
 #define PLUGIN_NAME		"[TF2] TF2Attributes"
 #define PLUGIN_AUTHOR		"FlaminSarge"
-#define PLUGIN_VERSION		"1.3.3@nosoop-1.0.6"
+#define PLUGIN_VERSION		"1.3.3@nosoop-1.0.7"
 #define PLUGIN_CONTACT		"http://forums.alliedmods.net/showthread.php?t=210221"
 #define PLUGIN_DESCRIPTION	"Functions to add/get attributes for TF2 players/items"
 
@@ -373,9 +373,7 @@ public int Native_GetAttrib(Handle plugin, int numParams) {
 	if (!GetAttributeDefIndexByName(strAttrib, iDefIndex)) {
 		return ThrowNativeError(SP_ERROR_NATIVE, "TF2Attrib_GetByName: Attribute '%s' not valid", strAttrib);
 	}
-	Address pAttrib = SDKCall(hSDKGetAttributeByID, pEntAttributeList, iDefIndex);
-	
-	return (!IsValidAddress(pAttrib) ? 0 : view_as<int>(pAttrib));
+	return SDKCall(hSDKGetAttributeByID, pEntAttributeList, iDefIndex);
 }
 
 /* native Address TF2Attrib_GetByDefIndex(int iEntity, int iDefIndex); */
@@ -392,8 +390,7 @@ public int Native_GetAttribByID(Handle plugin, int numParams) {
 		return 0;
 	}
 	
-	Address pAttrib = SDKCall(hSDKGetAttributeByID, pEntAttributeList, iDefIndex);
-	return (!IsValidAddress(pAttrib) ? 0 : view_as<int>(pAttrib));
+	return SDKCall(hSDKGetAttributeByID, pEntAttributeList, iDefIndex);
 }
 
 /* native bool TF2Attrib_RemoveByName(int iEntity, char[] strAttrib); */
