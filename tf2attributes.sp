@@ -511,27 +511,27 @@ public int Native_RemoveAll(Handle plugin, int numParams)
 
 public int Native_SetID(Handle plugin, int numParams)
 {
-	Address pAttrib = view_as<Address>(GetNativeCell(1));
+	Address pAttrib = GetNativeCell(1);
 	int iDefIndex = GetNativeCell(2);
 	StoreToAddress(pAttrib+view_as<Address>(4), iDefIndex, NumberType_Int16);
 }
 
 public int Native_GetID(Handle plugin, int numParams)
 {
-	Address pAttrib = view_as<Address>(GetNativeCell(1));
+	Address pAttrib = GetNativeCell(1);
 	return LoadFromAddress(pAttrib+view_as<Address>(4), NumberType_Int16);
 }
 
 public int Native_SetVal(Handle plugin, int numParams)
 {
-	Address pAttrib = view_as<Address>(GetNativeCell(1));
-	int flVal = GetNativeCell(2);	//It's a float but avoiding tag mismatch warnings
+	Address pAttrib = GetNativeCell(1);
+	int flVal = GetNativeCell(2);	//It's a float but avoiding tag mismatch warnings from StoreToAddress
 	StoreToAddress(pAttrib+view_as<Address>(8), flVal, NumberType_Int32);
 }
 
 public int Native_GetVal(Handle plugin, int numParams)
 {
-	Address pAttrib = view_as<Address>(GetNativeCell(1));
+	Address pAttrib = GetNativeCell(1);
 	return LoadFromAddress(pAttrib+view_as<Address>(8), NumberType_Int32);
 }
 
@@ -547,14 +547,14 @@ public int Native_GetInitialVal(Handle plugin, int numParams)
 
 public int Native_SetCurrency(Handle plugin, int numParams)
 {
-	Address pAttrib = view_as<Address>(GetNativeCell(1));
+	Address pAttrib = GetNativeCell(1);
 	int nCurrency = GetNativeCell(2);
 	StoreToAddress(pAttrib+view_as<Address>(12), nCurrency, NumberType_Int32);
 }
 
 public int Native_GetCurrency(Handle plugin, int numParams)
 {
-	Address pAttrib = view_as<Address>(GetNativeCell(1));
+	Address pAttrib = GetNativeCell(1);
 	return LoadFromAddress(pAttrib+view_as<Address>(12), NumberType_Int32);
 }
 
