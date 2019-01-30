@@ -7,7 +7,7 @@
 
 #define PLUGIN_NAME		"[TF2] TF2Attributes"
 #define PLUGIN_AUTHOR		"FlaminSarge"
-#define PLUGIN_VERSION		"1.3.3@nosoop-1.2.0"
+#define PLUGIN_VERSION		"1.3.3@nosoop-1.3.0"
 #define PLUGIN_CONTACT		"http://forums.alliedmods.net/showthread.php?t=210221"
 #define PLUGIN_DESCRIPTION	"Functions to add/get attributes for TF2 players/items"
 
@@ -197,14 +197,13 @@ public void OnPluginStart() {
 /* native bool TF2Attrib_IsIntegerValue(int iDefIndex); */
 public int Native_IsIntegerValue(Handle plugin, int numParams) {
 	int iDefIndex = GetNativeCell(1);
-	switch (iDefIndex) {
-		case 133, 143, 147, 152, 184, 185, 186, 192, 193, 194, 198, 211, 214, 227, 228, 229,
-				262, 294, 302, 372, 373, 374, 379, 381, 383, 403, 420, 371, 500, 501, 2010,
-				2011, 2021, 2023, 2024: {
-			return true;
-		}
+	
+	Address pEconItemAttributeDefinition = GetAttributeDefinitionByID(iDefIndex);
+	if (!pEconItemAttributeDefinition) {
+		return ThrowNativeError(1, "Attribute index %d is not valid", iDefIndex);
 	}
-	return false;
+	
+	return LoadFromAddressOffset(pEconItemAttributeDefinition, 0x0E, NumberType_Int8);
 }
 
 stock int GetStaticAttribs(Address pItemDef, int[] iAttribIndices, int[] iAttribValues, int size = 16) {
