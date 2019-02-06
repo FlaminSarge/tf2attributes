@@ -82,7 +82,7 @@
 				"library"			"server"
 				"windows"			"\x55\x8B\xEC\xF3\x0F\x10\x4D\x10\x83\xEC\x10"
 				"linux"				"@_ZN9CTFPlayer18AddCustomAttributeEPKcff"
-				"amc"				"@_ZN9CTFPlayer18AddCustomAttributeEPKcff"
+				"mac"				"@_ZN9CTFPlayer18AddCustomAttributeEPKcff"
 			}
 		}
 	}
