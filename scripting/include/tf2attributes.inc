@@ -215,13 +215,23 @@ native bool TF2Attrib_IsValidAttributeName(const char[] strAttrib);
  * Adds a custom, potentially temporary attribute to a player.
  * 
  * @param client			Client index to set the attribute on.
- * @param strATtrib			Name of the attribute, as from the "name" key in items_game.
+ * @param strAttrib			Name of the attribute, as from the "name" key in items_game.
  * @param flValue			Value to set m_flValue to.
  * @param flDuration		Duration of the attribute.  If less than 0, the attribute will not be automatically removed.
  * 
  * @noreturn
  */
 native void TF2Attrib_AddCustomPlayerAttribute(int client, const char[] strAttrib, float flValue, float flDuration = -1.0);
+
+/**
+ * Removes a previously applied custom attribute on a player.
+ *
+ * @param client			Client index to remove the attribute from.
+ * @param strAttrib			Name of the attribute, as from the "name" key in items_game.
+ *
+ * @noreturn
+ */
+native void TF2Attrib_RemoveCustomPlayerAttribute(int client, const char[] strAttrib);
 
 /**
  * Gets whether the plugin loaded without ANY errors.
@@ -267,6 +277,7 @@ public __pl_tf2attributes_SetNTVOptional()
 	MarkNativeAsOptional("TF2Attrib_IsIntegerValue");
 	MarkNativeAsOptional("TF2Attrib_IsValidAttributeName");
 	MarkNativeAsOptional("TF2Attrib_AddCustomPlayerAttribute");
+	MarkNativeAsOptional("TF2Attrib_RemoveCustomPlayerAttribute");
 	
 	MarkNativeAsOptional("TF2Attrib_IsReady");
 }

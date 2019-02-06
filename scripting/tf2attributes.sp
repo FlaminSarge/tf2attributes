@@ -7,7 +7,7 @@
 
 #define PLUGIN_NAME		"[TF2] TF2Attributes"
 #define PLUGIN_AUTHOR		"FlaminSarge"
-#define PLUGIN_VERSION		"1.3.3@nosoop-1.3.0"
+#define PLUGIN_VERSION		"1.3.3@nosoop-1.4.0"
 #define PLUGIN_CONTACT		"http://forums.alliedmods.net/showthread.php?t=210221"
 #define PLUGIN_DESCRIPTION	"Functions to add/get attributes for TF2 players/items"
 
@@ -33,6 +33,7 @@ Handle hSDKOnAttribValuesChanged;
 Handle hSDKRemoveAttribute;
 Handle hSDKDestroyAllAttributes;
 Handle hSDKAddCustomAttribute;
+Handle hSDKRemoveCustomAttribute;
 
 static bool g_bPluginReady = false;
 public APLRes AskPluginLoad2(Handle myself, bool late, char[] error, int err_max) {
@@ -64,6 +65,7 @@ public APLRes AskPluginLoad2(Handle myself, bool late, char[] error, int err_max
 	CreateNative("TF2Attrib_IsIntegerValue", Native_IsIntegerValue);
 	CreateNative("TF2Attrib_IsValidAttributeName", Native_IsValidAttributeName);
 	CreateNative("TF2Attrib_AddCustomPlayerAttribute", Native_AddCustomAttribute);
+	CreateNative("TF2Attrib_RemoveCustomPlayerAttribute", Native_RemoveCustomAttribute);
 	CreateNative("TF2Attrib_IsReady", Native_IsReady);
 
 	//unused, backcompat I guess?
@@ -184,6 +186,14 @@ public void OnPluginStart() {
 	PrepSDKCall_AddParameter(SDKType_Float, SDKPass_Plain);
 	hSDKAddCustomAttribute = EndPrepSDKCall();
 	if (!hSDKAddCustomAttribute) {
+		SetFailState("Could not initialize call to CTFPlayer::AddCustomAttribute");
+	}
+	
+	StartPrepSDKCall(SDKCall_Player);
+	PrepSDKCall_SetFromConf(hGameConf, SDKConf_Signature, "CTFPlayer::RemoveCustomAttribute");
+	PrepSDKCall_AddParameter(SDKType_String, SDKPass_Pointer);
+	hSDKRemoveCustomAttribute = EndPrepSDKCall();
+	if (!hSDKRemoveCustomAttribute) {
 		SetFailState("Could not initialize call to CTFPlayer::AddCustomAttribute");
 	}
 	
@@ -601,6 +611,16 @@ public int Native_AddCustomAttribute(Handle plugin, int numParams) {
 	float flDuration = GetNativeCell(4);
 	
 	SDKCall(hSDKAddCustomAttribute, client, strAttrib, flValue, flDuration);
+	return;
+}
+
+public int Native_RemoveCustomAttribute(Handle plugin, int numParams) {
+	char strAttrib[MAX_ATTRIBUTE_NAME_LENGTH];
+	
+	int client = GetNativeCell(1);
+	GetNativeString(2, strAttrib, sizeof(strAttrib));
+	
+	SDKCall(hSDKRemoveCustomAttribute, client, strAttrib);
 	return;
 }
 

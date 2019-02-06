@@ -84,6 +84,14 @@
 				"linux"				"@_ZN9CTFPlayer18AddCustomAttributeEPKcff"
 				"mac"				"@_ZN9CTFPlayer18AddCustomAttributeEPKcff"
 			}
+			"CTFPlayer::RemoveCustomAttribute" //(const char*), returns void
+			{
+				// called with x-ref string "hidden maxhealth non buffed"
+				"library"			"server"
+				"windows"			"\x55\x8B\xEC\x83\xEC\x10\x53\x56\x57\xFF\x75\x08"
+				"linux"				"@_ZN9CTFPlayer21RemoveCustomAttributeEPKc"
+				"mac"				"@_ZN9CTFPlayer21RemoveCustomAttributeEPKc"
+			}
 		}
 	}
 }
