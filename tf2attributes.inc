@@ -246,10 +246,10 @@ public void __pl_tf2attributes_SetNTVOptional()
 	MarkNativeAsOptional("TF2Attrib_IsIntegerValue");
 	MarkNativeAsOptional("TF2Attrib_IsReady");
 
-	MarkNativeAsOptional("TF2Attrib_SetInitialValue");
-	MarkNativeAsOptional("TF2Attrib_GetInitialValue");
-	MarkNativeAsOptional("TF2Attrib_SetIsSetBonus");
-	MarkNativeAsOptional("TF2Attrib_GetIsSetBonus");
+//	MarkNativeAsOptional("TF2Attrib_SetInitialValue");
+//	MarkNativeAsOptional("TF2Attrib_GetInitialValue");
+//	MarkNativeAsOptional("TF2Attrib_SetIsSetBonus");
+//	MarkNativeAsOptional("TF2Attrib_GetIsSetBonus");
 }
 #endif
 
