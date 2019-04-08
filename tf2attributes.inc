@@ -223,7 +223,7 @@ public SharedPlugin __pl_tf2attributes =
 };
 
 #if !defined REQUIRE_PLUGIN
-public __pl_tf2attributes_SetNTVOptional()
+public void __pl_tf2attributes_SetNTVOptional()
 {
 	MarkNativeAsOptional("TF2Attrib_SetByName");
 	MarkNativeAsOptional("TF2Attrib_SetByDefIndex");
