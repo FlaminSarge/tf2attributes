@@ -7,7 +7,7 @@
 
 #define PLUGIN_NAME		"[TF2] TF2Attributes"
 #define PLUGIN_AUTHOR		"FlaminSarge"
-#define PLUGIN_VERSION		"1.3.3@nosoop-1.4.0"
+#define PLUGIN_VERSION		"1.3.3@nosoop-1.5.0"
 #define PLUGIN_CONTACT		"http://forums.alliedmods.net/showthread.php?t=210221"
 #define PLUGIN_DESCRIPTION	"Functions to add/get attributes for TF2 players/items"
 
@@ -210,7 +210,7 @@ public int Native_IsIntegerValue(Handle plugin, int numParams) {
 	
 	Address pEconItemAttributeDefinition = GetAttributeDefinitionByID(iDefIndex);
 	if (!pEconItemAttributeDefinition) {
-		return ThrowNativeError(1, "Attribute index %d is not valid", iDefIndex);
+		return ThrowNativeError(1, "Attribute index %d is invalid", iDefIndex);
 	}
 	
 	return LoadFromAddressOffset(pEconItemAttributeDefinition, 0x0E, NumberType_Int8);
@@ -243,7 +243,7 @@ public int Native_GetStaticAttribs(Handle plugin, int numParams) {
 	}
 	
 	if (size <= 0) {
-		return ThrowNativeError(SP_ERROR_NATIVE, "TF2Attrib_GetStaticAttribs: Array size (iMaxLen=%d) must be greater than 0", size);
+		return ThrowNativeError(SP_ERROR_NATIVE, "Array size must be greater than 0 (currently %d)", size);
 	}
 	
 	Address pSchema = GetItemSchema();
@@ -315,11 +315,11 @@ public int Native_GetSOCAttribs(Handle plugin, int numParams) {
 	}
 	
 	if (size <= 0) {
-		return ThrowNativeError(SP_ERROR_NATIVE, "TF2Attrib_GetSOCAttribs: Array size (iMaxLen=%d) must be greater than 0", size);
+		return ThrowNativeError(SP_ERROR_NATIVE, "Array size must be greater than 0 (currently %d)", size);
 	}
 	
 	if (!IsValidEntity(iEntity)) {
-		return ThrowNativeError(SP_ERROR_NATIVE, "TF2Attrib_GetSOCAttribs: Invalid entity (iEntity=%d) passed", iEntity);
+		return ThrowNativeError(SP_ERROR_NATIVE, "Entity %d (%d) is invalid", EntIndexToEntRef(iEntity), iEntity);
 	}
 	
 	//maybe move some address stuff to here from the stock, but for now it's okay
@@ -334,7 +334,7 @@ public int Native_GetSOCAttribs(Handle plugin, int numParams) {
 public int Native_SetAttrib(Handle plugin, int numParams) {
 	int entity = GetNativeCell(1);
 	if (!IsValidEntity(entity)) {
-		return ThrowNativeError(SP_ERROR_NATIVE, "TF2Attrib_SetByName: Invalid entity (iEntity=%d) passed", entity);
+		return ThrowNativeError(SP_ERROR_NATIVE, "Entity %d (%d) is invalid", EntIndexToEntRef(entity), entity);
 	}
 	
 	char strAttrib[MAX_ATTRIBUTE_NAME_LENGTH];
@@ -343,12 +343,12 @@ public int Native_SetAttrib(Handle plugin, int numParams) {
 	
 	Address pEntAttributeList = GetEntityAttributeList(entity);
 	if (!pEntAttributeList) {
-		return false;
+		return ThrowNativeError(SP_ERROR_NATIVE, "Entity %d (%d) does not have property m_AttributeList", EntIndexToEntRef(entity), entity);
 	}
 	
 	Address pAttribDef = GetAttributeDefinitionByName(strAttrib);
 	if (!pAttribDef) {
-		return ThrowNativeError(SP_ERROR_NATIVE, "TF2Attrib_SetByName: Attribute '%s' not valid", strAttrib);
+		return ThrowNativeError(SP_ERROR_NATIVE, "Attribute name '%s' is invalid", strAttrib);
 	}
 	
 	SDKCall(hSDKSetRuntimeValue, pEntAttributeList, pAttribDef, flVal);
@@ -359,7 +359,7 @@ public int Native_SetAttrib(Handle plugin, int numParams) {
 public int Native_SetAttribByID(Handle plugin, int numParams) {
 	int entity = GetNativeCell(1);
 	if (!IsValidEntity(entity)) {
-		return ThrowNativeError(SP_ERROR_NATIVE, "TF2Attrib_SetByDefIndex: Invalid entity (iEntity=%d) passed", entity);
+		return ThrowNativeError(SP_ERROR_NATIVE, "Entity %d (%d) is invalid", EntIndexToEntRef(entity), entity);
 	}
 	
 	int iAttrib = GetNativeCell(2);
@@ -367,12 +367,12 @@ public int Native_SetAttribByID(Handle plugin, int numParams) {
 	
 	Address pEntAttributeList = GetEntityAttributeList(entity);
 	if (!pEntAttributeList) {
-		return false;
+		return ThrowNativeError(SP_ERROR_NATIVE, "Entity %d (%d) does not have property m_AttributeList", EntIndexToEntRef(entity), entity);
 	}
 	
 	Address pAttribDef = GetAttributeDefinitionByID(iAttrib);
 	if (!pAttribDef) {
-		return ThrowNativeError(SP_ERROR_NATIVE, "TF2Attrib_SetByDefIndex: Attribute %d not valid", iAttrib);
+		return ThrowNativeError(SP_ERROR_NATIVE, "Attribute index %d is invalid", iAttrib);
 	}
 	
 	SDKCall(hSDKSetRuntimeValue, pEntAttributeList, pAttribDef, flVal);
@@ -384,7 +384,7 @@ public int Native_GetAttrib(Handle plugin, int numParams) {
 	// There is a CAttributeList::GetByName, wonder why this is being done instead...
 	int entity = GetNativeCell(1);
 	if (!IsValidEntity(entity)) {
-		return ThrowNativeError(SP_ERROR_NATIVE, "TF2Attrib_GetByName: Invalid entity (iEntity=%d) passed", entity);
+		return ThrowNativeError(SP_ERROR_NATIVE, "Entity %d (%d) is invalid", EntIndexToEntRef(entity), entity);
 	}
 	
 	char strAttrib[MAX_ATTRIBUTE_NAME_LENGTH];
@@ -392,12 +392,12 @@ public int Native_GetAttrib(Handle plugin, int numParams) {
 	
 	Address pEntAttributeList = GetEntityAttributeList(entity);
 	if (!pEntAttributeList) {
-		return 0;
+		return ThrowNativeError(SP_ERROR_NATIVE, "Entity %d (%d) does not have property m_AttributeList", EntIndexToEntRef(entity), entity);
 	}
 	
 	int iDefIndex;
 	if (!GetAttributeDefIndexByName(strAttrib, iDefIndex)) {
-		return ThrowNativeError(SP_ERROR_NATIVE, "TF2Attrib_GetByName: Attribute '%s' not valid", strAttrib);
+		return ThrowNativeError(SP_ERROR_NATIVE, "Attribute name '%s' is invalid", strAttrib);
 	}
 	return SDKCall(hSDKGetAttributeByID, pEntAttributeList, iDefIndex);
 }
@@ -406,7 +406,7 @@ public int Native_GetAttrib(Handle plugin, int numParams) {
 public int Native_GetAttribByID(Handle plugin, int numParams) {
 	int entity = GetNativeCell(1);
 	if (!IsValidEntity(entity)) {
-		return ThrowNativeError(SP_ERROR_NATIVE, "TF2Attrib_GetByDefIndex: Invalid entity (iEntity=%d) passed", entity);
+		return ThrowNativeError(SP_ERROR_NATIVE, "Entity %d (%d) is invalid", EntIndexToEntRef(entity), entity);
 	}
 	
 	int iDefIndex = GetNativeCell(2);
@@ -423,8 +423,7 @@ public int Native_GetAttribByID(Handle plugin, int numParams) {
 public int Native_Remove(Handle plugin, int numParams) {
 	int entity = GetNativeCell(1);
 	if (!IsValidEntity(entity)) {
-		ThrowNativeError(SP_ERROR_NATIVE, "TF2Attrib_RemoveByName: Invalid entity (iEntity=%d) passed", entity);
-		return false;
+		return ThrowNativeError(SP_ERROR_NATIVE, "Entity %d (%d) is invalid", EntIndexToEntRef(entity), entity);
 	}
 	
 	char strAttrib[MAX_ATTRIBUTE_NAME_LENGTH];
@@ -432,12 +431,12 @@ public int Native_Remove(Handle plugin, int numParams) {
 
 	Address pEntAttributeList = GetEntityAttributeList(entity);
 	if (!pEntAttributeList) {
-		return false;
+		return ThrowNativeError(SP_ERROR_NATIVE, "Entity %d (%d) does not have property m_AttributeList", EntIndexToEntRef(entity), entity);
 	}
 	
 	Address pAttribDef = GetAttributeDefinitionByName(strAttrib);
 	if (!pAttribDef) {
-		return ThrowNativeError(SP_ERROR_NATIVE, "TF2Attrib_RemoveByName: Attribute '%s' not valid", strAttrib);
+		return ThrowNativeError(SP_ERROR_NATIVE, "Attribute name '%s' is invalid", strAttrib);
 	}
 	
 	SDKCall(hSDKRemoveAttribute, pEntAttributeList, pAttribDef);	//Not a clue what the return is here, but it's probably a clone of the attrib being removed
@@ -448,20 +447,19 @@ public int Native_Remove(Handle plugin, int numParams) {
 public int Native_RemoveByID(Handle plugin, int numParams) {
 	int entity = GetNativeCell(1);
 	if (!IsValidEntity(entity)) {
-		ThrowNativeError(SP_ERROR_NATIVE, "TF2Attrib_RemoveByDefIndex: Invalid entity (iEntity=%d) passed", entity);
-		return false;
+		return ThrowNativeError(SP_ERROR_NATIVE, "Entity %d (%d) is invalid", EntIndexToEntRef(entity), entity);
 	}
 	
 	int iAttrib = GetNativeCell(2);
 
 	Address pEntAttributeList = GetEntityAttributeList(entity);
 	if (!pEntAttributeList) {
-		return false;
+		return ThrowNativeError(SP_ERROR_NATIVE, "Entity %d (%d) does not have property m_AttributeList", EntIndexToEntRef(entity), entity);
 	}
 	
 	Address pAttribDef = GetAttributeDefinitionByID(iAttrib);
 	if (!pAttribDef) {
-		return ThrowNativeError(SP_ERROR_NATIVE, "TF2Attrib_RemoveByDefIndex: Attribute %d not valid", iAttrib);
+		return ThrowNativeError(SP_ERROR_NATIVE, "Attribute index %d is invalid", iAttrib);
 	}
 	
 	SDKCall(hSDKRemoveAttribute, pEntAttributeList, pAttribDef);	//Not a clue what the return is here, but it's probably a clone of the attrib being removed
@@ -472,13 +470,12 @@ public int Native_RemoveByID(Handle plugin, int numParams) {
 public int Native_RemoveAll(Handle plugin, int numParams) {
 	int entity = GetNativeCell(1);
 	if (!IsValidEntity(entity)) {
-		ThrowNativeError(SP_ERROR_NATIVE, "TF2Attrib_RemoveAll: Invalid entity (iEntity=%d) passed", entity);
-		return false;
+		return ThrowNativeError(SP_ERROR_NATIVE, "Entity %d (%d) is invalid", EntIndexToEntRef(entity), entity);
 	}
 
 	Address pEntAttributeList = GetEntityAttributeList(entity);
 	if (!pEntAttributeList) {
-		return false;
+		return ThrowNativeError(SP_ERROR_NATIVE, "Entity %d (%d) does not have property m_AttributeList", EntIndexToEntRef(entity), entity);
 	}
 	
 	SDKCall(hSDKDestroyAllAttributes, pEntAttributeList);	//disregard the return (Valve does!)
@@ -525,7 +522,7 @@ public int Native_GetCurrency(Handle plugin, int numParams) {
 }
 
 public int Native_DeprecatedPropertyAccess(Handle plugin, int numParams) {
-	return ThrowNativeError(SP_ERROR_NATIVE, "TF2Attributes:  Property associated with native function no longer exists");
+	return ThrowNativeError(SP_ERROR_NATIVE, "Property associated with native function no longer exists");
 }
 
 stock bool ClearAttributeCache(int entity) {
@@ -546,8 +543,7 @@ stock bool ClearAttributeCache(int entity) {
 public int Native_ClearCache(Handle plugin, int numParams) {
 	int entity = GetNativeCell(1);
 	if (!IsValidEntity(entity)) {
-		ThrowNativeError(SP_ERROR_NATIVE, "TF2Attrib_ClearCache: Invalid entity (iEntity=%d) passed", entity);
-		return false;
+		return ThrowNativeError(SP_ERROR_NATIVE, "Entity %d (%d) is invalid", EntIndexToEntRef(entity), entity);
 	}
 	return ClearAttributeCache(entity);
 }
@@ -561,18 +557,16 @@ public int Native_ListIDs(Handle plugin, int numParams) {
 	}
 	
 	if (size <= 0) {
-		ThrowNativeError(SP_ERROR_NATIVE, "TF2Attrib_ListDefIndices: Array size (iMaxLen=%d) must be greater than 0", size);
-		return -1;
+		return ThrowNativeError(SP_ERROR_NATIVE, "Array size must be greater than 0 (currently %d)", size);
 	}
 	
 	if (!IsValidEntity(entity)) {
-		ThrowNativeError(SP_ERROR_NATIVE, "TF2Attrib_ListDefIndices: Invalid entity (iEntity=%d) passed", entity);
-		return -1;
+		return ThrowNativeError(SP_ERROR_NATIVE, "Entity %d (%d) is invalid", EntIndexToEntRef(entity), entity);
 	}
 	
 	Address pAttributeList = GetEntityAttributeList(entity);
 	if (!pAttributeList) {
-		return -1;
+		return ThrowNativeError(SP_ERROR_NATIVE, "Entity %d (%d) does not have property m_AttributeList", EntIndexToEntRef(entity), entity);
 	}
 	
 	// 0x04 = CAttributeList.m_Attributes (type CUtlVector<CEconItemAttribute>)
