@@ -203,6 +203,28 @@ native int TF2Attrib_GetSOCAttribs(int iEntity, int[] iAttribIndices, float[] fl
 native bool TF2Attrib_IsIntegerValue(int iDefIndex);
 
 /**
+ * Applies a transformation to the given initial value, following the rules according to the given attribute class.
+ * 
+ * @param flInitial			Initial float value.
+ * @param attrClass			The attribute class, as from the "attribute_class" key in items_game.
+ * @param iEntity			The entity that should be checked.  Checking players also checks their equipped items.
+ * 
+ * @return					Transformed initial value.
+ */
+native float TF2Attrib_HookValueFloat(float flInitial, const char[] attrClass, int iEntity);
+
+/**
+ * Applies a transformation to the given initial value, following the rules according to the given attribute class.
+ * 
+ * @param iInitial			Initial float value.
+ * @param attrClass			The attribute class, as from the "attribute_class" key in items_game.
+ * @param iEntity			The entity that should be checked.  Checking players also checks their equipped items.
+ * 
+ * @return					Transformed initial value.
+ */
+native int TF2Attrib_HookValueInt(int nInitial, const char[] attrClass, int iEntity);
+
+/**
  * Gets whether the plugin loaded without ANY errors.
  * For the purpose of allowing dependencies to ignore the plugin if this returns false.
  * Check in OnAllPluginsLoaded() or something. I dunno.
