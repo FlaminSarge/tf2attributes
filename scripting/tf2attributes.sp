@@ -7,7 +7,7 @@
 
 #define PLUGIN_NAME		"[TF2] TF2Attributes"
 #define PLUGIN_AUTHOR		"FlaminSarge"
-#define PLUGIN_VERSION		"1.3.3@nosoop-1.5.0"
+#define PLUGIN_VERSION		"1.3.3@nosoop-1.6.0"
 #define PLUGIN_CONTACT		"http://forums.alliedmods.net/showthread.php?t=210221"
 #define PLUGIN_DESCRIPTION	"Functions to add/get attributes for TF2 players/items"
 
@@ -34,6 +34,8 @@ Handle hSDKRemoveAttribute;
 Handle hSDKDestroyAllAttributes;
 Handle hSDKAddCustomAttribute;
 Handle hSDKRemoveCustomAttribute;
+Handle hSDKAttributeHookFloat;
+Handle hSDKAttributeHookInt;
 
 static bool g_bPluginReady = false;
 public APLRes AskPluginLoad2(Handle myself, bool late, char[] error, int err_max) {
@@ -66,6 +68,8 @@ public APLRes AskPluginLoad2(Handle myself, bool late, char[] error, int err_max
 	CreateNative("TF2Attrib_IsValidAttributeName", Native_IsValidAttributeName);
 	CreateNative("TF2Attrib_AddCustomPlayerAttribute", Native_AddCustomAttribute);
 	CreateNative("TF2Attrib_RemoveCustomPlayerAttribute", Native_RemoveCustomAttribute);
+	CreateNative("TF2Attrib_HookValueFloat", Native_HookValueFloat);
+	CreateNative("TF2Attrib_HookValueInt", Native_HookValueInt);
 	CreateNative("TF2Attrib_IsReady", Native_IsReady);
 
 	//unused, backcompat I guess?
@@ -195,6 +199,32 @@ public void OnPluginStart() {
 	hSDKRemoveCustomAttribute = EndPrepSDKCall();
 	if (!hSDKRemoveCustomAttribute) {
 		SetFailState("Could not initialize call to CTFPlayer::AddCustomAttribute");
+	}
+	
+	StartPrepSDKCall(SDKCall_Static);
+	PrepSDKCall_SetFromConf(hGameConf, SDKConf_Signature, "CAttributeManager::AttribHookValue<float>");
+	PrepSDKCall_SetReturnInfo(SDKType_Float, SDKPass_Plain);
+	PrepSDKCall_AddParameter(SDKType_Float, SDKPass_Plain); // initial value
+	PrepSDKCall_AddParameter(SDKType_String, SDKPass_Pointer); // attribute class
+	PrepSDKCall_AddParameter(SDKType_CBaseEntity, SDKPass_Pointer); // CBaseEntity* entity
+	PrepSDKCall_AddParameter(SDKType_PlainOldData, SDKPass_Plain); // CUtlVector<CBaseEntity*>, set to nullptr
+	PrepSDKCall_AddParameter(SDKType_Bool, SDKPass_Plain); // bool const_string
+	hSDKAttributeHookFloat = EndPrepSDKCall();
+	if (!hSDKAttributeHookFloat) {
+		SetFailState("Could not initialize call to CAttributeManager::AttribHookValue<float>");
+	}
+	
+	StartPrepSDKCall(SDKCall_Static);
+	PrepSDKCall_SetFromConf(hGameConf, SDKConf_Signature, "CAttributeManager::AttribHookValue<int>");
+	PrepSDKCall_SetReturnInfo(SDKType_PlainOldData, SDKPass_Plain);
+	PrepSDKCall_AddParameter(SDKType_PlainOldData, SDKPass_Plain); // initial value
+	PrepSDKCall_AddParameter(SDKType_String, SDKPass_Pointer); // attribute class
+	PrepSDKCall_AddParameter(SDKType_CBaseEntity, SDKPass_Pointer); // CBaseEntity* entity
+	PrepSDKCall_AddParameter(SDKType_PlainOldData, SDKPass_Plain); // CUtlVector<CBaseEntity*>, set to nullptr
+	PrepSDKCall_AddParameter(SDKType_Bool, SDKPass_Plain); // bool const_string
+	hSDKAttributeHookInt = EndPrepSDKCall();
+	if (!hSDKAttributeHookInt) {
+		SetFailState("Could not initialize call to CAttributeManager::AttribHookValue<int>");
 	}
 	
 	CreateConVar("tf2attributes_version", PLUGIN_VERSION, "TF2Attributes version number", FCVAR_NOTIFY);
@@ -616,6 +646,48 @@ public int Native_RemoveCustomAttribute(Handle plugin, int numParams) {
 	
 	SDKCall(hSDKRemoveCustomAttribute, client, strAttrib);
 	return;
+}
+
+/* native float TF2Attrib_HookValueFloat(float flInitial, const char[] attrClass, int iEntity); */
+public int Native_HookValueFloat(Handle plugin, int numParams) {
+	/**
+	 * CAttributeManager::AttribHookValue<float>(float value, string_t attr_class,
+	 *         CBaseEntity const* entity, CUtlVector<CBaseEntity*> reentrantList,
+	 *         bool is_const_str);
+	 * 
+	 * `value` is the value that is returned after modifiers based on `attr_class`.
+	 * `reentrantList` seems to be a list of entities to ignore?
+	 * `is_const_str` is true iff the `attr_class` is hardcoded
+	 *     (i.e., it's at a fixed location) -- this is never true from a plugin
+	 *     This determines if the game uses AllocPooledString_StaticConstantStringPointer
+	 *     (when is_const_str == true) or AllocPooledString (false).
+	 */
+	float initial = GetNativeCell(1);
+	
+	int buflen;
+	GetNativeStringLength(2, buflen);
+	char[] attrClass = new char[++buflen];
+	GetNativeString(2, attrClass, buflen);
+	
+	int entity = GetNativeCell(3);
+	
+	return SDKCall(hSDKAttributeHookFloat, initial, attrClass, entity,
+			Address_Null, false);
+}
+
+/* native float TF2Attrib_HookValueInt(int nInitial, const char[] attrClass, int iEntity); */
+public int Native_HookValueInt(Handle plugin, int numParams) {
+	int initial = GetNativeCell(1);
+	
+	int buflen;
+	GetNativeStringLength(2, buflen);
+	char[] attrClass = new char[++buflen];
+	GetNativeString(2, attrClass, buflen);
+	
+	int entity = GetNativeCell(3);
+	
+	return SDKCall(hSDKAttributeHookInt, initial, attrClass, entity,
+			Address_Null, false);
 }
 
 /* helper functions */

@@ -77,6 +77,22 @@
 				"linux"				"@_ZN14CAttributeList20DestroyAllAttributesEv"
 				"mac"				"@_ZN14CAttributeList20DestroyAllAttributesEv"
 			}
+			"CAttributeManager::AttribHookValue<float>"
+			{
+				// (float value, string_t attrClass, CBaseEntity* ent, CUtlVector<CBaseEntity*> *reentrant, bool const_str)
+				// called in unique x-ref to "ubercharge_ammo" on Windows
+				"library"			"server"
+				"linux"				"@_ZN17CAttributeManager15AttribHookValueIfEET_S1_PKcPK11CBaseEntityP10CUtlVectorIPS4_10CUtlMemoryIS8_iEEb"
+				"windows"			"\x55\x8B\xEC\x83\xEC\x0C\x8B\x0D\x2A\x2A\x2A\x2A\x53\x56\x57\x33\xF6\x33\xFF\x89\x75\xF4\x89\x7D\xF8\x8B\x41\x08\x85\xC0\x74\x2A\x68\x2A\x2A\x2A\x2A\x68\x2A\x2A\x2A\x2A\x68\x2A\x2A\x2A\x2A\x68\x2A\x2A\x2A\x2A\x6A\x6B"
+			}
+			"CAttributeManager::AttribHookValue<int>"
+			{
+				// (int value, string_t attrClass, CBaseEntity* ent, CUtlVector<CBaseEntity*> *reentrant, bool const_str)
+				// called in unique x-ref to "mod_max_primary_clip_override" on Windows
+				"library"			"server"
+				"linux"				"@_ZN17CAttributeManager15AttribHookValueIiEET_S1_PKcPK11CBaseEntityP10CUtlVectorIPS4_10CUtlMemoryIS8_iEEb"
+				"windows"			"\x55\x8B\xEC\x83\xEC\x10\x8B\x0D\x2A\x2A\x2A\x2A\x53\x56\x57\x33\xFF\x33\xDB\x89\x7D\xF0\x89\x5D\xF4\x8B\x41\x08\x85\xC0\x74\x2A\x68\x2A\x2A\x2A\x2A\x68\x2A\x2A\x2A\x2A\x68\x2A\x2A\x2A\x2A\x68\x2A\x2A\x2A\x2A\x6A\x6B"
+			}
 			"CTFPlayer::AddCustomAttribute" //(const char*, float, float), returns void
 			{
 				"library"			"server"
