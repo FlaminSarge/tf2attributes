@@ -13,7 +13,7 @@
  * @return				True if the attribute was added successfully, false if entity does not have m_AttributeList.
  * @error				Invalid entity index or attribute name passed.
  */
-native bool TF2Attrib_SetByName(int iEntity, char[] strAttrib, float flValue);
+native bool TF2Attrib_SetByName(int iEntity, const char[] strAttrib, float flValue);
 
 /**
  * Sets an attribute's value on an entity, adding it if it isn't on the entity.
@@ -36,7 +36,7 @@ native bool TF2Attrib_SetByDefIndex(int iEntity, int iDefIndex, float flValue);
  * @return				Address of the attribute on the entity, or Address_Null if the attribute does not exist on the entity.
  * @error				Invalid entity index or attribute name passed.
  */
-native Address TF2Attrib_GetByName(int iEntity, char[] strAttrib);
+native Address TF2Attrib_GetByName(int iEntity, const char[] strAttrib);
 
 /**
  * Returns the address of an attribute (by attribute index) on an entity.
@@ -58,7 +58,7 @@ native Address TF2Attrib_GetByDefIndex(int iEntity, int iDefIndex);
  * @return				True if the SDKCall was made, false if entity had invalid address or m_AttributeList missing.
  * @error				Invalid entity index or attribute name passed.
  */
-native bool TF2Attrib_RemoveByName(int iEntity, char[] strAttrib);
+native bool TF2Attrib_RemoveByName(int iEntity, const char[] strAttrib);
 
 /**
  * Removes an attribute from an entity.
