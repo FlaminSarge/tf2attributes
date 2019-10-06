@@ -276,7 +276,7 @@ public SharedPlugin __pl_tf2attributes =
 };
 
 #if !defined REQUIRE_PLUGIN
-public __pl_tf2attributes_SetNTVOptional()
+public void __pl_tf2attributes_SetNTVOptional()
 {
 	MarkNativeAsOptional("TF2Attrib_SetByName");
 	MarkNativeAsOptional("TF2Attrib_SetByDefIndex");
@@ -300,6 +300,8 @@ public __pl_tf2attributes_SetNTVOptional()
 	MarkNativeAsOptional("TF2Attrib_IsValidAttributeName");
 	MarkNativeAsOptional("TF2Attrib_AddCustomPlayerAttribute");
 	MarkNativeAsOptional("TF2Attrib_RemoveCustomPlayerAttribute");
+	MarkNativeAsOptional("TF2Attrib_HookValueFloat");
+	MarkNativeAsOptional("TF2Attrib_HookValueInt");
 	
 	MarkNativeAsOptional("TF2Attrib_IsReady");
 }
