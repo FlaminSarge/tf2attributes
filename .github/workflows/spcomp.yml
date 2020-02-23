@@ -1,0 +1,17 @@
+name: SPCompile
+
+on: [push]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2
+    - name: Setup SourcePawn Compiler
+      uses: rumblefrog/setup-sp@master
+      with:
+        version: '1.10.x'
+    - name: Compile tf2attributes
+      run: spcomp tf2attributes.sp -o compiled/tf2attributes.smx
+    - name: Compile example
+      run: spcomp tf2attributes_example.sp -o compiled/tf2attributes_example.smx
