@@ -77,6 +77,21 @@
 				"linux"				"@_ZN14CAttributeList20DestroyAllAttributesEv"
 				"mac"				"@_ZN14CAttributeList20DestroyAllAttributesEv"
 			}
+			"CTFPlayer::AddCustomAttribute" //(const char*, float, float), returns void
+			{
+				"library"			"server"
+				"windows"			"\x55\x8B\xEC\xF3\x0F\x10\x4D\x10\x83\xEC\x10"
+				"linux"				"@_ZN9CTFPlayer18AddCustomAttributeEPKcff"
+				"mac"				"@_ZN9CTFPlayer18AddCustomAttributeEPKcff"
+			}
+			"CTFPlayer::RemoveCustomAttribute" //(const char*), returns void
+			{
+				// called with x-ref string "hidden maxhealth non buffed"
+				"library"			"server"
+				"windows"			"\x55\x8B\xEC\x83\xEC\x10\x53\x56\x57\xFF\x75\x08"
+				"linux"				"@_ZN9CTFPlayer21RemoveCustomAttributeEPKc"
+				"mac"				"@_ZN9CTFPlayer21RemoveCustomAttributeEPKc"
+			}
 		}
 	}
 }
