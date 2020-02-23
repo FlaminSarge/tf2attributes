@@ -14,4 +14,4 @@ jobs:
     - name: Compile tf2attributes
       run: spcomp tf2attributes.sp
     - name: Compile example
-      run: spcomp tf2attributes_example.sp
+      run: spcomp -i. tf2attributes_example.sp
