@@ -27,6 +27,8 @@ new Handle:hSDKGetAttributeByID;
 new Handle:hSDKOnAttribValuesChanged;
 new Handle:hSDKRemoveAttribute;
 new Handle:hSDKDestroyAllAttributes;
+new Handle:hSDKAttributeHookFloat;
+new Handle:hSDKAttributeHookInt;
 
 //new Handle:hPluginReady;
 new bool:g_bPluginReady = false;
@@ -194,6 +196,34 @@ public OnPluginStart()
 	{
 		SetFailState("Could not initialize call to CAttributeManager::OnAttributeValuesChanged");
 		bPluginReady = false;
+	}
+
+	StartPrepSDKCall(SDKCall_Static);
+	PrepSDKCall_SetFromConf(hGameConf, SDKConf_Signature, "CAttributeManager::AttribHookValue<float>");
+	PrepSDKCall_SetReturnInfo(SDKType_Float, SDKPass_Plain);
+	PrepSDKCall_AddParameter(SDKType_Float, SDKPass_Plain); // initial value
+	PrepSDKCall_AddParameter(SDKType_String, SDKPass_Pointer); // attribute class
+	PrepSDKCall_AddParameter(SDKType_CBaseEntity, SDKPass_Pointer); // CBaseEntity* entity
+	PrepSDKCall_AddParameter(SDKType_PlainOldData, SDKPass_Plain); // CUtlVector<CBaseEntity*>, set to nullptr
+	PrepSDKCall_AddParameter(SDKType_Bool, SDKPass_Plain); // bool const_string
+	hSDKAttributeHookFloat = EndPrepSDKCall();
+	if (hSDKAttributeHookFloat == INVALID_HANDLE)
+	{
+		SetFailState("Could not initialize call to CAttributeManager::AttribHookValue<float>");
+	}
+	
+	StartPrepSDKCall(SDKCall_Static);
+	PrepSDKCall_SetFromConf(hGameConf, SDKConf_Signature, "CAttributeManager::AttribHookValue<int>");
+	PrepSDKCall_SetReturnInfo(SDKType_PlainOldData, SDKPass_Plain);
+	PrepSDKCall_AddParameter(SDKType_PlainOldData, SDKPass_Plain); // initial value
+	PrepSDKCall_AddParameter(SDKType_String, SDKPass_Pointer); // attribute class
+	PrepSDKCall_AddParameter(SDKType_CBaseEntity, SDKPass_Pointer); // CBaseEntity* entity
+	PrepSDKCall_AddParameter(SDKType_PlainOldData, SDKPass_Plain); // CUtlVector<CBaseEntity*>, set to nullptr
+	PrepSDKCall_AddParameter(SDKType_Bool, SDKPass_Plain); // bool const_string
+	hSDKAttributeHookInt = EndPrepSDKCall();
+	if (hSDKAttributeHookInt == INVALID_HANDLE)
+	{
+		SetFailState("Could not initialize call to CAttributeManager::AttribHookValue<int>");
 	}
 
 	CreateConVar("tf2attributes_version", PLUGIN_VERSION, "TF2Attributes version number", FCVAR_NOTIFY);
@@ -756,6 +786,46 @@ public Native_ListIDs(Handle:plugin, numParams)
 	}
 	SetNativeArray(2, iAttribIndices, size);
 	return iNumAttribs;
+}
+
+public int Native_HookValueFloat(Handle plugin, int numParams) {
+	/**
+	 * CAttributeManager::AttribHookValue<float>(float value, string_t attr_class,
+	 *         CBaseEntity const* entity, CUtlVector<CBaseEntity*> reentrantList,
+	 *         bool is_const_str);
+	 * 
+	 * `value` is the value that is returned after modifiers based on `attr_class`.
+	 * `reentrantList` seems to be a list of entities to ignore?
+	 * `is_const_str` is true iff the `attr_class` is hardcoded
+	 *     (i.e., it's at a fixed location) -- this is never true from a plugin
+	 *     This determines if the game uses AllocPooledString_StaticConstantStringPointer
+	 *     (when is_const_str == true) or AllocPooledString (false).
+	 */
+	float initial = GetNativeCell(1);
+	
+	int buflen;
+	GetNativeStringLength(2, buflen);
+	char[] attrClass = new char[++buflen];
+	GetNativeString(2, attrClass, buflen);
+	
+	int entity = GetNativeCell(3);
+	
+	return SDKCall(hSDKAttributeHookFloat, initial, attrClass, entity,
+			Address_Null, false);
+}
+
+public int Native_HookValueInt(Handle plugin, int numParams) {
+	int initial = GetNativeCell(1);
+	
+	int buflen;
+	GetNativeStringLength(2, buflen);
+	char[] attrClass = new char[++buflen];
+	GetNativeString(2, attrClass, buflen);
+	
+	int entity = GetNativeCell(3);
+	
+	return SDKCall(hSDKAttributeHookInt, initial, attrClass, entity,
+			Address_Null, false);
 }
 
 //TODO Stop using Address_MinimumValid once verified that logic still works without it
