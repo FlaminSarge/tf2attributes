@@ -12,6 +12,6 @@ jobs:
       with:
         version: '1.10.x'
     - name: Compile tf2attributes
-      run: spcomp tf2attributes.sp -o output/tf2attributes.smx
+      run: spcomp tf2attributes.sp
     - name: Compile example
-      run: spcomp tf2attributes_example.sp -o output/tf2attributes_example.smx
+      run: spcomp tf2attributes_example.sp
