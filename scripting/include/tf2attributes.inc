@@ -247,7 +247,7 @@ native float TF2Attrib_HookValueFloat(float flInitial, const char[] attrClass, i
 /**
  * Applies a transformation to the given initial value, following the rules according to the given attribute class.
  * 
- * @param iInitial			Initial float value.
+ * @param nInitial			Initial integer value.
  * @param attrClass			The attribute class, as from the "attribute_class" key in items_game.
  * @param iEntity			The entity that should be checked.  Checking players also checks their equipped items.
  * 
