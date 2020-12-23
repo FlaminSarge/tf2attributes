@@ -28,6 +28,19 @@ native bool TF2Attrib_SetByName(int iEntity, const char[] strAttrib, float flVal
 native bool TF2Attrib_SetByDefIndex(int iEntity, int iDefIndex, float flValue);
 
 /**
+ * Parses the attribute name and value strings and applies it on the entity.  This parses
+ * numeric and string attributes.
+ * 
+ * @param iEntity		Entity index to set the attribute on. Must have m_AttributeList.
+ * @param strAttrib		Name of the attribute, as from the "name" key in items_game.
+ * @param strValue		Value to set the attribute to.
+ * 
+ * @return				True if the attribute was added successfully, false if the attribute name was invalid.
+ * @error				Invalid entity index or entity does not have m_AttributeList.
+ */
+native bool TF2Attrib_SetFromStringValue(int iEntity, const char[] strAttrib, const char[] strValue);
+
+/**
  * Returns the address of an attribute on an entity.
  *
  * @param iEntity		Entity index to get attribute from. Must have m_AttributeList.
@@ -48,6 +61,17 @@ native Address TF2Attrib_GetByName(int iEntity, const char[] strAttrib);
  * @error				Invalid entity index or attribute index passed.
  */
 native Address TF2Attrib_GetByDefIndex(int iEntity, int iDefIndex);
+
+/**
+ * Returns the string value for a given attribute on an entity, if it exists.
+ *
+ * @param iEntity		Entity index to get attribute from. Must have m_AttributeList.
+ * @param strAttrib		Name of the attribute, as from the "name" key in items_game.
+ * 
+ * @return				Number of bytes copied.
+ * @error				Invalid entity index, invalid attribute name, or attribute is not a string value.
+ */
+native int TF2Attrib_GetStringValue(int iEntity, const char[] strAttrib, char[] buffer, int maxlen);
 
 /**
  * Removes an attribute from an entity.

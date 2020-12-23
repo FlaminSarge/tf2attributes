@@ -11,6 +11,27 @@
 				"linux"		"14"
 				"mac"		"14"
 			}
+			"ISchemaAttributeTypeBase::BConvertStringToEconAttributeValue"
+			{
+				"windows"	"4"
+				"linux"		"5"
+			}
+			"ISchemaAttributeTypeBase::InitializeNewEconAttributeValue"
+			{
+				"windows"	"7"
+				"linux"		"8"
+			}
+			"ISchemaAttributeTypeBase::UnloadEconAttributeValue"
+			{
+				"windows"	"8"
+				"linux"		"9"
+			}
+			"ISchemaAttributeTypeBase::BSupportsGame..."
+			{
+				// "ISchemaAttributeTypeBase::BSupportsGameplayModificationAndNetworking()"
+				"windows"	"10"
+				"linux"		"11"
+			}
 		}
 		"Signatures"
 		{

@@ -7,7 +7,7 @@
 
 #define PLUGIN_NAME		"[TF2] TF2Attributes"
 #define PLUGIN_AUTHOR		"FlaminSarge"
-#define PLUGIN_VERSION		"1.3.3@nosoop-1.6.0"
+#define PLUGIN_VERSION		"1.3.3@nosoop-1.7.0"
 #define PLUGIN_CONTACT		"http://forums.alliedmods.net/showthread.php?t=210221"
 #define PLUGIN_DESCRIPTION	"Functions to add/get attributes for TF2 players/items"
 
@@ -21,6 +21,7 @@ public Plugin myinfo = {
 
 // "counts as assister is some kind of pet this update is going to be awesome" is 73 characters. Valve... Valve.
 #define MAX_ATTRIBUTE_NAME_LENGTH 128
+#define MAX_ATTRIBUTE_VALUE_LENGTH PLATFORM_MAX_PATH
 
 Handle hSDKGetItemDefinition;
 Handle hSDKGetSOCData;
@@ -37,6 +38,27 @@ Handle hSDKRemoveCustomAttribute;
 Handle hSDKAttributeHookFloat;
 Handle hSDKAttributeHookInt;
 
+Handle hSDKAttributeValueInitialize;
+Handle hSDKAttributeTypeCanBeNetworked;
+Handle hSDKAttributeValueFromString;
+Handle hSDKAttributeValueUnload;
+Handle hSDKAttributeValueUnloadByRef;
+
+/**
+ * since the game doesn't free heap-allocated non-GC attributes, we're taking on that
+ * responsibility
+ */
+enum struct HeapAttributeValue {
+	Address m_pAttributeValue;
+	int m_iAttributeDefinitionIndex;
+	
+	void Destroy() {
+		Address pAttrDef = GetAttributeDefinitionByID(this.m_iAttributeDefinitionIndex);
+		UnloadAttributeRawValue(pAttrDef, this.m_pAttributeValue);
+	}
+}
+ArrayList g_ManagedAllocatedValues;
+
 static bool g_bPluginReady = false;
 public APLRes AskPluginLoad2(Handle myself, bool late, char[] error, int err_max) {
 	char game[8];
@@ -49,8 +71,10 @@ public APLRes AskPluginLoad2(Handle myself, bool late, char[] error, int err_max
 	
 	CreateNative("TF2Attrib_SetByName", Native_SetAttrib);
 	CreateNative("TF2Attrib_SetByDefIndex", Native_SetAttribByID);
+	CreateNative("TF2Attrib_SetFromStringValue", Native_SetAttribStringByName);
 	CreateNative("TF2Attrib_GetByName", Native_GetAttrib);
 	CreateNative("TF2Attrib_GetByDefIndex", Native_GetAttribByID);
+	CreateNative("TF2Attrib_GetStringValue", Native_GetAttribString);
 	CreateNative("TF2Attrib_RemoveByName", Native_Remove);
 	CreateNative("TF2Attrib_RemoveByDefIndex", Native_RemoveByID);
 	CreateNative("TF2Attrib_RemoveAll", Native_RemoveAll);
@@ -227,11 +251,86 @@ public void OnPluginStart() {
 		SetFailState("Could not initialize call to CAttributeManager::AttribHookValue<int>");
 	}
 	
+	StartPrepSDKCall(SDKCall_Raw); // CEconItemAttribute*
+	PrepSDKCall_SetFromConf(hGameConf, SDKConf_Virtual,
+			"ISchemaAttributeTypeBase::InitializeNewEconAttributeValue");
+	PrepSDKCall_AddParameter(SDKType_PlainOldData, SDKPass_Plain); // CAttributeDefinition*
+	hSDKAttributeValueInitialize = EndPrepSDKCall();
+	if (!hSDKAttributeValueInitialize) {
+		SetFailState("Could not initialize call to ISchemaAttributeTypeBase::InitializeNewEconAttributeValue");
+	}
+	
+	StartPrepSDKCall(SDKCall_Raw); // attr_type
+	PrepSDKCall_SetFromConf(hGameConf, SDKConf_Virtual,
+			"ISchemaAttributeTypeBase::BSupportsGame..."); // 64 chars ought to be enough for anyone -- dvander, probably
+	PrepSDKCall_SetReturnInfo(SDKType_Bool, SDKPass_Plain);
+	hSDKAttributeTypeCanBeNetworked = EndPrepSDKCall();
+	if (!hSDKAttributeTypeCanBeNetworked) {
+		SetFailState("Could not initialize call to ISchemaAttributeTypeBase::BSupportsGameplayModificationAndNetworking");
+	}
+	
+	StartPrepSDKCall(SDKCall_Raw);
+	PrepSDKCall_SetFromConf(hGameConf, SDKConf_Virtual,
+			"ISchemaAttributeTypeBase::BConvertStringToEconAttributeValue");
+	PrepSDKCall_SetReturnInfo(SDKType_Bool, SDKPass_Plain);
+	PrepSDKCall_AddParameter(SDKType_PlainOldData, SDKPass_Plain);
+	PrepSDKCall_AddParameter(SDKType_String, SDKPass_Pointer);
+	PrepSDKCall_AddParameter(SDKType_PlainOldData, SDKPass_Plain);
+	PrepSDKCall_AddParameter(SDKType_Bool, SDKPass_Plain);
+	hSDKAttributeValueFromString = EndPrepSDKCall();
+	if (!hSDKAttributeValueFromString) {
+		SetFailState("Could not initialize call to ISchemaAttributeTypeBase::BConvertStringToEconAttributeValue");
+	}
+	
+	StartPrepSDKCall(SDKCall_Raw);
+	PrepSDKCall_SetFromConf(hGameConf, SDKConf_Virtual,
+			"ISchemaAttributeTypeBase::UnloadEconAttributeValue");
+	PrepSDKCall_AddParameter(SDKType_PlainOldData, SDKPass_Plain);
+	hSDKAttributeValueUnload = EndPrepSDKCall();
+	if (!hSDKAttributeValueUnload) {
+		SetFailState("Could not initialize call to ISchemaAttributeTypeBase::UnloadEconAttributeValue");
+	}
+	
+	StartPrepSDKCall(SDKCall_Raw);
+	PrepSDKCall_SetFromConf(hGameConf, SDKConf_Virtual,
+			"ISchemaAttributeTypeBase::UnloadEconAttributeValue");
+	PrepSDKCall_AddParameter(SDKType_PlainOldData, SDKPass_Pointer);
+	hSDKAttributeValueUnloadByRef = EndPrepSDKCall();
+	if (!hSDKAttributeValueUnloadByRef) {
+		SetFailState("Could not initialize call to ISchemaAttributeTypeBase::UnloadEconAttributeValue");
+	}
+	
 	CreateConVar("tf2attributes_version", PLUGIN_VERSION, "TF2Attributes version number", FCVAR_NOTIFY);
 	
 	g_bPluginReady = true;
 	
 	delete hGameConf;
+	
+	g_ManagedAllocatedValues = new ArrayList(sizeof(HeapAttributeValue));
+}
+
+/**
+ * Free up all attribute values that we allocated ourselves.
+ */
+public void OnMapEnd() {
+	// remove heap-based attributes from any existing entities so they don't leak
+	int ent = -1;
+	while ((ent = FindEntityByClassname(ent, "*")) != -1) {
+		if (!HasEntProp(ent, Prop_Send, "m_AttributeList")) {
+			continue;
+		}
+		
+		// TODO iterate attribute list and remove
+	}
+	
+	while (g_ManagedAllocatedValues.Length) {
+		HeapAttributeValue attribute;
+		g_ManagedAllocatedValues.GetArray(0, attribute, sizeof(attribute));
+		
+		attribute.Destroy();
+		
+		g_ManagedAllocatedValues.Erase(0);
+	}
 }
 
 /* native bool TF2Attrib_IsIntegerValue(int iDefIndex); */
@@ -246,7 +345,7 @@ public int Native_IsIntegerValue(Handle plugin, int numParams) {
 	return LoadFromAddressOffset(pEconItemAttributeDefinition, 0x0E, NumberType_Int8);
 }
 
-stock int GetStaticAttribs(Address pItemDef, int[] iAttribIndices, int[] iAttribValues, int size = 16) {
+static int GetStaticAttribs(Address pItemDef, int[] iAttribIndices, int[] iAttribValues, int size = 16) {
 	AssertValidAddress(pItemDef);
 	
 	// 0x1C = CEconItemDefinition.m_Attributes (type CUtlVector<static_attrib_t>)
@@ -291,7 +390,7 @@ public int Native_GetStaticAttribs(Handle plugin, int numParams) {
 	return iCount;
 }
 
-stock int GetSOCAttribs(int iEntity, int[] iAttribIndices, int[] iAttribValues, int size = 16) {
+static int GetSOCAttribs(int iEntity, int[] iAttribIndices, int[] iAttribValues, int size = 16) {
 	if (size <= 0) {
 		return -1;
 	}
@@ -409,6 +508,38 @@ public int Native_SetAttribByID(Handle plugin, int numParams) {
 	return true;
 }
 
+/* native bool TF2Attrib_ParseAttribute(int iEntity, const char[] strAttrib, const char[] strValue); */
+public int Native_SetAttribStringByName(Handle plugin, int numParams) {
+	int entity = GetNativeCell(1);
+	if (!IsValidEntity(entity)) {
+		return ThrowNativeError(SP_ERROR_NATIVE, "Entity %d (%d) is invalid", EntIndexToEntRef(entity), entity);
+	}
+	
+	Address pEntAttributeList = GetEntityAttributeList(entity);
+	if (!pEntAttributeList) {
+		return ThrowNativeError(SP_ERROR_NATIVE, "Entity %d (%d) does not have property m_AttributeList", EntIndexToEntRef(entity), entity);
+	}
+	
+	char strAttrib[MAX_ATTRIBUTE_NAME_LENGTH], strAttribVal[MAX_ATTRIBUTE_VALUE_LENGTH];
+	GetNativeString(2, strAttrib, sizeof(strAttrib));
+	GetNativeString(3, strAttribVal, sizeof(strAttribVal));
+	
+	int attrdef;
+	if (!GetAttributeDefIndexByName(strAttrib, attrdef)) {
+		// we don't throw on nonexistent attributes here; we return false and let the caller handle that
+		return false;
+	}
+	
+	// allocate a CEconItemAttribute instance in an entity's runtime attribute list
+	Address pEconItemAttribute = FindOrCreateEconItemAttribute(entity, attrdef);
+	if (!InitializeAttributeValue(attrdef, pEconItemAttribute, strAttribVal)) {
+		return false;
+	}
+	
+	ClearAttributeCache(entity);
+	return true;
+}
+
 /* native Address TF2Attrib_GetByName(int iEntity, char[] strAttrib); */
 public int Native_GetAttrib(Handle plugin, int numParams) {
 	// There is a CAttributeList::GetByName, wonder why this is being done instead...
@@ -430,6 +561,47 @@ public int Native_GetAttrib(Handle plugin, int numParams) {
 		return ThrowNativeError(SP_ERROR_NATIVE, "Attribute name '%s' is invalid", strAttrib);
 	}
 	return SDKCall(hSDKGetAttributeByID, pEntAttributeList, iDefIndex);
+}
+
+/* native int TF2Attrib_GetStringValue(int iEntity, const char[] strAttrib, char[] buffer, int maxlen); */
+public int Native_GetAttribString(Handle plugin, int numParams) {
+	int entity = GetNativeCell(1);
+	if (!IsValidEntity(entity)) {
+		return ThrowNativeError(SP_ERROR_NATIVE, "Entity %d (%d) is invalid", EntIndexToEntRef(entity), entity);
+	}
+	
+	char strAttrib[MAX_ATTRIBUTE_NAME_LENGTH];
+	GetNativeString(2, strAttrib, sizeof(strAttrib));
+	
+	Address pEntAttributeList = GetEntityAttributeList(entity);
+	if (!pEntAttributeList) {
+		return ThrowNativeError(SP_ERROR_NATIVE, "Entity %d (%d) does not have property m_AttributeList", EntIndexToEntRef(entity), entity);
+	}
+	
+	int attrdef;
+	if (!GetAttributeDefIndexByName(strAttrib, attrdef)) {
+		return ThrowNativeError(SP_ERROR_NATIVE, "Attribute name '%s' is invalid", strAttrib);
+	}
+	
+	// typecheck the input attribute by verifying that the attribute deftype matches
+	if (!IsAttributeString(attrdef)) {
+		return ThrowNativeError(SP_ERROR_NATIVE, "Attribute '%s' is not a string", strAttrib);
+	}
+	
+	Address pEconItemAttribute = SDKCall(hSDKGetAttributeByID, pEntAttributeList, attrdef);
+	if (!pEconItemAttribute) {
+		return 0;
+	}
+	
+	int maxlen = GetNativeCell(4), length;
+	char[] buffer = new char[maxlen];
+	
+	// these indirections hurt my brain
+	Address pRawValue = DereferencePointer(pEconItemAttribute, 0x08);
+	Address strptr = DereferencePointer(DereferencePointer(pRawValue, 0x10));
+	LoadStringFromAddress(strptr, buffer, maxlen);
+	SetNativeString(3, buffer, maxlen, .bytes = length);
+	return length;
 }
 
 /* native Address TF2Attrib_GetByDefIndex(int iEntity, int iDefIndex); */
@@ -555,7 +727,7 @@ public int Native_DeprecatedPropertyAccess(Handle plugin, int numParams) {
 	return ThrowNativeError(SP_ERROR_NATIVE, "Property associated with native function no longer exists");
 }
 
-stock bool ClearAttributeCache(int entity) {
+static bool ClearAttributeCache(int entity) {
 	if (entity <= 0 || !IsValidEntity(entity)) {
 		return false;
 	}
@@ -704,6 +876,10 @@ static Address GetEntityEconItemView(int entity) {
 	return Address_Null;
 }
 
+/**
+ * Returns the m_AttributeList offset.  This does not correspond to the CUtlVector instance
+ * (which is offset by 0x04).
+ */
 static Address GetEntityAttributeList(int entity) {
 	int offsAttributeList = GetEntSendPropOffs(entity, "m_AttributeList", true);
 	if (offsAttributeList > 0) {
@@ -753,6 +929,110 @@ static Address GetEntityAttributeManager(int entity) {
 	return pAttributeManager;
 }
 
+/**
+ * Returns the address of a CEconItemAttribute instance on an entity with the given attribute
+ * definition index, creating it if one doesn't already exist.
+ */
+static Address FindOrCreateEconItemAttribute(int entity, int attrdef) {
+	int offs_AttributeList = GetEntSendPropOffs(entity, "m_AttributeList", true);
+	if (offs_AttributeList == -1) {
+		return Address_Null;
+	}
+	
+	Address pAttrDef = GetAttributeDefinitionByID(attrdef);
+	if (!pAttrDef) {
+		return Address_Null;
+	}
+	
+	Address pAttributeList = GetEntityAddress(entity) + view_as<Address>(offs_AttributeList);
+	
+	Address pEconItemAttribute = SDKCall(hSDKGetAttributeByID, pAttributeList, attrdef);
+	if (!pEconItemAttribute) {
+		SDKCall(hSDKSetRuntimeValue, pAttributeList, pAttrDef, 0.0);
+		pEconItemAttribute = SDKCall(hSDKGetAttributeByID, pAttributeList, attrdef);
+	}
+	return pEconItemAttribute;
+}
+
+/**
+ * Initializes the space occupied by a given CEconItemAttribute pointer, parsing and allocating
+ * the raw value based on the attribute's underlying type.  This should correctly parse numeric
+ * and string values.
+ */
+static bool InitializeAttributeValue(int attrdef, Address pEconItemAttribute, const char[] value) {
+	Address pAttrDef = GetAttributeDefinitionByID(attrdef);
+	if (!pAttrDef) {
+		return false;
+	}
+	
+	Address pDefType = DereferencePointer(pAttrDef + view_as<Address>(0x08));
+	Address pAttributeValue = pEconItemAttribute + view_as<Address>(0x08);
+	
+	if (!IsNetworkedRuntimeAttribute(pDefType)) {
+		/**
+		 * initialize raw value; any existing values present in the CEconItemAttribute* are trashed
+		 * 
+		 * that is okay -- tf2attributes is the only one managing heap-allocated values, and
+		 * it holds its own reference to the value for freeing later
+		 * 
+		 * we don't attempt to free any existing attribute value mid-game as we don't know if
+		 * the value is present in multiple places (no refcounts!)
+		 */
+		SDKCall(hSDKAttributeValueInitialize, pDefType, pAttributeValue);
+		
+		// add to our managed values
+		// this definitely works for heap, not sure if it works for inline
+		HeapAttributeValue attribute;
+		attribute.m_iAttributeDefinitionIndex = attrdef;
+		attribute.m_pAttributeValue = DereferencePointer(pAttributeValue);
+		
+		g_ManagedAllocatedValues.PushArray(attribute);
+	}
+	
+	if (!SDKCall(hSDKAttributeValueFromString, pDefType, pAttrDef, value, pAttributeValue, true)) {
+		// we couldn't parse the attribute value, abort
+		return false;
+	}
+	return true;
+}
+
+/**
+ * Returns true if the given attribute type can (normally) be networked.
+ * We make the assumption that non-networked attributes have to be heap / inline allocated.
+ */
+static bool IsNetworkedRuntimeAttribute(Address pDefType) {
+	return SDKCall(hSDKAttributeTypeCanBeNetworked, pDefType);
+}
+
+/**
+ * Unloads the attribute in a given CEconItemAttribute instance.
+ */
+static void UnloadAttributeValue(Address pAttrDef, Address pEconItemAttribute) {
+	Address pDefType = DereferencePointer(pAttrDef + view_as<Address>(0x08));
+	Address pAttributeValue = pEconItemAttribute + view_as<Address>(0x08);
+	
+	SDKCall(hSDKAttributeValueUnload, pDefType, pAttributeValue);
+}
+
+/**
+ * Unloads the given raw attribute value.
+ */
+static void UnloadAttributeRawValue(Address pAttrDef, Address pAttributeValue) {
+	Address pAttributeDataUnion = pAttributeValue;
+	Address pDefType = DereferencePointer(pAttrDef + view_as<Address>(0x08));
+	SDKCall(hSDKAttributeValueUnloadByRef, pDefType, pAttributeDataUnion);
+}
+
+/**
+ * Returns true if the given attribute definition index is a string.
+ */
+static bool IsAttributeString(int attrdef) {
+	Address pAttrDef = GetAttributeDefinitionByID(attrdef);
+	Address pKnownStringAttribDef = GetAttributeDefinitionByName("cosmetic taunt sound");
+	return pAttrDef && pKnownStringAttribDef
+			&& DereferencePointer(pAttrDef, 0x08) == DereferencePointer(pKnownStringAttribDef, 0x08);
+}
+
 stock int LoadFromAddressOffset(Address addr, int offset, NumberType size) {
 	return LoadFromAddress(addr + view_as<Address>(offset), size);
 }
@@ -763,6 +1043,22 @@ stock void StoreToAddressOffset(Address addr, int offset, int data, NumberType s
 
 stock Address DereferencePointer(Address addr, int offset = 0) {
 	return view_as<Address>(LoadFromAddressOffset(addr, offset, NumberType_Int32));
+}
+
+stock int LoadStringFromAddress(Address addr, char[] buffer, int maxlen,
+		bool &bIsNullPointer = false) {
+	if (!addr) {
+		bIsNullPointer = true;
+		return 0;
+	}
+	
+	int c;
+	char ch;
+	do {
+		ch = view_as<int>(LoadFromAddress(addr + view_as<Address>(c), NumberType_Int8));
+		buffer[c] = ch;
+	} while (ch && ++c < maxlen - 1);
+	return c;
 }
 
 /**
