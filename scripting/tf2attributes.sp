@@ -82,7 +82,7 @@ public APLRes AskPluginLoad2(Handle myself, bool late, char[] error, int err_max
 	CreateNative("TF2Attrib_GetDefIndex", Native_GetID);
 	CreateNative("TF2Attrib_SetValue", Native_SetVal);
 	CreateNative("TF2Attrib_GetValue", Native_GetVal);
-	CreateNative("TF2Attrib_GetStringValue", Native_GetStringVal);
+	CreateNative("TF2Attrib_UnsafeGetStringValue", Native_GetStringVal);
 	CreateNative("TF2Attrib_SetRefundableCurrency", Native_SetCurrency);
 	CreateNative("TF2Attrib_GetRefundableCurrency", Native_GetCurrency);
 	CreateNative("TF2Attrib_ClearCache", Native_ClearCache);
