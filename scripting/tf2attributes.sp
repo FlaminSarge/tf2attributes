@@ -82,6 +82,7 @@ public APLRes AskPluginLoad2(Handle myself, bool late, char[] error, int err_max
 	CreateNative("TF2Attrib_GetDefIndex", Native_GetID);
 	CreateNative("TF2Attrib_SetValue", Native_SetVal);
 	CreateNative("TF2Attrib_GetValue", Native_GetVal);
+	CreateNative("TF2Attrib_GetStringValue", Native_GetStringVal);
 	CreateNative("TF2Attrib_SetRefundableCurrency", Native_SetCurrency);
 	CreateNative("TF2Attrib_GetRefundableCurrency", Native_GetCurrency);
 	CreateNative("TF2Attrib_ClearCache", Native_ClearCache);
@@ -741,6 +742,18 @@ public int Native_SetVal(Handle plugin, int numParams) {
 public int Native_GetVal(Handle plugin, int numParams) {
 	Address pAttrib = GetNativeCell(1);
 	return LoadFromAddressOffset(pAttrib, 0x08, NumberType_Int32);
+}
+
+/* TF2Attrib_UnsafeGetStringValue(any pRawValue, char[] buffer, int maxlen); */
+public int Native_GetStringVal(Handle plugin, int numParams) {
+	Address pRawValue = GetNativeCell(1);
+	
+	int maxlen = GetNativeCell(3), length;
+	char[] buffer = new char[maxlen];
+	
+	ReadStringAttributeValue(pRawValue, buffer, maxlen);
+	SetNativeString(2, buffer, maxlen, .bytes = length);
+	return length;
 }
 
 /* native void TF2Attrib_SetRefundableCurrency(Address pAttrib, int nCurrency); */

@@ -160,6 +160,20 @@ native void TF2Attrib_SetValue(Address pAttrib, float flValue);
 native float TF2Attrib_GetValue(Address pAttrib);
 
 /**
+ * Returns the string data from its raw value representation.
+ * 
+ * WARNING: This dereferences the input value!  Feeding it values that aren't CAttribute_String pointers will result in unexpected behavior, potentially crashing the server.
+ * In most cases, it's recommended to use TF2Attrib_GetStringValue instead.
+ * 
+ * @param pRawValue		Raw attribute value.  You can get this value with either TF2Attrib_GetValue, TF2Attrib_GetSOCAttribs, or TF2Attrib_GetStaticAttribs.
+ * @param buffer		Buffer to store the resulting string to.
+ * @param maxlen		Maximum length of the buffer.
+ * 
+ * @return Number of bytes written.
+ */
+native int TF2Attrib_UnsafeGetStringValue(any pRawValue, char[] buffer, int maxlen);
+
+/**
  * Sets the value of m_nRefundableCurrency on an attribute.
  *
  * @param pAttrib		Address of the attribute.
