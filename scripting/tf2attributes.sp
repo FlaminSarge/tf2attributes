@@ -614,7 +614,6 @@ public int Native_GetAttribString(Handle plugin, int numParams) {
 	
 	// iterate over static attributes if it's not in runtime nor item server
 	if (!pRawValue) {
-		PrintToServer("iterating static attribs");
 		int itemdef = GetEntProp(entity, Prop_Send, "m_iItemDefinitionIndex");
 		int attrdefSOC;
 		any attrvalSOC;
