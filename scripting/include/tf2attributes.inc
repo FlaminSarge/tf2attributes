@@ -64,6 +64,7 @@ native Address TF2Attrib_GetByDefIndex(int iEntity, int iDefIndex);
 
 /**
  * Returns the string value for a given attribute on an entity, if it exists.
+ * This looks through the runtime, item server, and static attribute lists in that order, returning the first available value.
  *
  * @param iEntity		Entity index to get attribute from. Must have m_AttributeList.
  * @param strAttrib		Name of the attribute, as from the "name" key in items_game.
