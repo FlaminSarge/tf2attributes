@@ -31,6 +31,10 @@ native bool TF2Attrib_SetByDefIndex(int iEntity, int iDefIndex, float flValue);
  * Parses the attribute name and value strings and applies it on the entity.  This parses
  * numeric and string attributes.
  * 
+ * If you use this on a non-numeric attribute, make sure that only the server reads off of that
+ * attribute.  Non-primitive values aren't replicated correctly between the client and the
+ * server; the client will read garbage and may crash!
+ * 
  * @param iEntity		Entity index to set the attribute on. Must have m_AttributeList.
  * @param strAttrib		Name of the attribute, as from the "name" key in items_game.
  * @param strValue		Value to set the attribute to.
