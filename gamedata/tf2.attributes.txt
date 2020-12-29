@@ -129,6 +129,15 @@
 				"linux"				"@_ZN9CTFPlayer21RemoveCustomAttributeEPKc"
 				"mac"				"@_ZN9CTFPlayer21RemoveCustomAttributeEPKc"
 			}
+			"CopyStringAttributeValueToCharPointerOutput" //(CAttribute_String*, char**), returns void
+			{
+				// called from CAttributeIterator_GetTypedAttributeValue<CAttribute_String, char const*>::OnIterateAttributeValue
+				// which on Windows has a unique bytesig `55 8B EC 56 8B F1 8B 46 04 3B 45 08 75 ? FF 76 08`
+				"library"			"server"
+				"windows"			"\x55\x8B\xEC\x8B\x45\x08\x8B\x48\x10"
+				"linux"				"@_Z43CopyStringAttributeValueToCharPointerOutputPK17CAttribute_StringPPKc"
+				"mac"				"@_Z43CopyStringAttributeValueToCharPointerOutputPK17CAttribute_StringPPKc"
+			}
 		}
 	}
 }

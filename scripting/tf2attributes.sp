@@ -43,6 +43,7 @@ Handle hSDKAttributeTypeCanBeNetworked;
 Handle hSDKAttributeValueFromString;
 Handle hSDKAttributeValueUnload;
 Handle hSDKAttributeValueUnloadByRef;
+Handle hSDKCopyStringAttributeToCharPointer;
 
 /**
  * since the game doesn't free heap-allocated non-GC attributes, we're taking on that
@@ -299,6 +300,16 @@ public void OnPluginStart() {
 	hSDKAttributeValueUnloadByRef = EndPrepSDKCall();
 	if (!hSDKAttributeValueUnloadByRef) {
 		SetFailState("Could not initialize call to ISchemaAttributeTypeBase::UnloadEconAttributeValue");
+	}
+	
+	StartPrepSDKCall(SDKCall_Static);
+	PrepSDKCall_SetFromConf(hGameConf, SDKConf_Signature,
+			"CopyStringAttributeValueToCharPointerOutput");
+	PrepSDKCall_AddParameter(SDKType_PlainOldData, SDKPass_Plain);
+	PrepSDKCall_AddParameter(SDKType_PlainOldData, SDKPass_Pointer, VDECODE_FLAG_ALLOWNULL, VENCODE_FLAG_COPYBACK); // char**, variable contains char* on return
+	hSDKCopyStringAttributeToCharPointer = EndPrepSDKCall();
+	if (!hSDKCopyStringAttributeToCharPointer) {
+		SetFailState("Could not initialize call to CopyStringAttributeValueToCharPointerOutput");
 	}
 	
 	CreateConVar("tf2attributes_version", PLUGIN_VERSION, "TF2Attributes version number", FCVAR_NOTIFY);
@@ -1176,8 +1187,22 @@ static bool IsAttributeString(int attrdef) {
  * Reads the contents of a CAttribute_String raw value.
  */
 static int ReadStringAttributeValue(Address pRawValue, char[] buffer, int maxlen) {
-	Address strptr = DereferencePointer(DereferencePointer(pRawValue, 0x10));
-	return LoadStringFromAddress(strptr, buffer, maxlen);
+	/**
+	 * Linux, Windows, and Mac differ slightly on how the std::string is laid out.
+	 * 
+	 * For the Linux binary, the first member is a char* containing the contents of the string.
+	 * Deref that and call it a day.
+	 * 
+	 * Windows implements it as a union where it's either a `char[16]` or a `char*, size_t @ 0x14`.
+	 * Check if the size_t is less than 16, then read the inline string or deref the char* depending on the results.
+	 * 
+	 * Mac implements it as either a `bool, char[]` or `bool, char* @ 0x8`.
+	 * 
+	 * I'm too lazy to reimplement the platform-specific bits; we're going to use sigs for this.
+	 */
+	Address pString;
+	SDKCall(hSDKCopyStringAttributeToCharPointer, pRawValue, pString);
+	return LoadStringFromAddress(pString, buffer, maxlen);
 }
 
 stock int LoadFromAddressOffset(Address addr, int offset, NumberType size) {
