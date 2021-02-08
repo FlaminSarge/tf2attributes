@@ -11,6 +11,11 @@
 				"linux"		"14"
 				"mac"		"14"
 			}
+			"CAttributeManager::ApplyAttributeStringWrapper"
+			{
+				// linux uses a signature
+				"windows"	"15"
+			}
 			"ISchemaAttributeTypeBase::BConvertStringToEconAttributeValue"
 			{
 				"windows"	"4"
@@ -113,6 +118,14 @@
 				"library"			"server"
 				"linux"				"@_ZN17CAttributeManager15AttribHookValueIiEET_S1_PKcPK11CBaseEntityP10CUtlVectorIPS4_10CUtlMemoryIS8_iEEb"
 				"windows"			"\x55\x8B\xEC\x83\xEC\x10\x8B\x0D\x2A\x2A\x2A\x2A\x53\x56\x57\x33\xFF\x33\xDB\x89\x7D\xF0\x89\x5D\xF4\x8B\x41\x08\x85\xC0\x74\x2A\x68\x2A\x2A\x2A\x2A\x68\x2A\x2A\x2A\x2A\x68\x2A\x2A\x2A\x2A\x68\x2A\x2A\x2A\x2A\x6A\x6B"
+			}
+			"CAttributeManager::ApplyAttributeStringWrapper"
+			{
+				// uses a hidden pointer, which ends up looking something like this monstrosity:
+				// (string_t* returnValue, CAttributeManager* this, string_t input, CBaseEntity* initiator, string_t classname, CUtlVector<CBaseEntity*>* entityList), returns string_t
+				// windows uses a (mostly) standard calling convention so we use the vtable call for that
+				"library"			"server"
+				"linux"				"@_ZN17CAttributeManager27ApplyAttributeStringWrapperE8string_tP11CBaseEntityS0_P10CUtlVectorIS2_10CUtlMemoryIS2_iEE"
 			}
 			"CTFPlayer::AddCustomAttribute" //(const char*, float, float), returns void
 			{

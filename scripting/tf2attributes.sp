@@ -38,6 +38,10 @@ Handle hSDKRemoveCustomAttribute;
 Handle hSDKAttributeHookFloat;
 Handle hSDKAttributeHookInt;
 
+// these two are mutually exclusive
+Handle hSDKAttributeApplyStringWrapperWindows;
+Handle hSDKAttributeApplyStringWrapperLinux;
+
 Handle hSDKAttributeValueInitialize;
 Handle hSDKAttributeTypeCanBeNetworked;
 Handle hSDKAttributeValueFromString;
@@ -96,6 +100,7 @@ public APLRes AskPluginLoad2(Handle myself, bool late, char[] error, int err_max
 	CreateNative("TF2Attrib_RemoveCustomPlayerAttribute", Native_RemoveCustomAttribute);
 	CreateNative("TF2Attrib_HookValueFloat", Native_HookValueFloat);
 	CreateNative("TF2Attrib_HookValueInt", Native_HookValueInt);
+	CreateNative("TF2Attrib_HookValueString", Native_HookValueString);
 	CreateNative("TF2Attrib_IsReady", Native_IsReady);
 
 	//unused, backcompat I guess?
@@ -251,6 +256,37 @@ public void OnPluginStart() {
 	hSDKAttributeHookInt = EndPrepSDKCall();
 	if (!hSDKAttributeHookInt) {
 		SetFailState("Could not initialize call to CAttributeManager::AttribHookValue<int>");
+	}
+	
+	// linux signature. this uses a hidden pointer passed in before `this` on the stack
+	// so we'll do our best with static since SM doesn't support that calling convention
+	StartPrepSDKCall(SDKCall_Static);
+	PrepSDKCall_SetFromConf(hGameConf, SDKConf_Signature, "CAttributeManager::ApplyAttributeStringWrapper");
+	PrepSDKCall_SetReturnInfo(SDKType_PlainOldData, SDKPass_Plain); // return string_t
+	PrepSDKCall_AddParameter(SDKType_PlainOldData, SDKPass_Pointer); // return value
+	PrepSDKCall_AddParameter(SDKType_PlainOldData, SDKPass_Plain); // thisptr
+	PrepSDKCall_AddParameter(SDKType_PlainOldData, SDKPass_Plain); // string_t initial value
+	PrepSDKCall_AddParameter(SDKType_CBaseEntity, SDKPass_Pointer); // initator entity (should contain thisptr)
+	PrepSDKCall_AddParameter(SDKType_PlainOldData, SDKPass_Plain); // string_t attribute class
+	PrepSDKCall_AddParameter(SDKType_PlainOldData, SDKPass_Plain); // CUtlVector<CBaseEntity*>, set to nullptr
+	hSDKAttributeApplyStringWrapperLinux = EndPrepSDKCall();
+	
+	if (!hSDKAttributeApplyStringWrapperLinux) {
+		// windows vcall. this one also uses a hidden pointer, but it's passed as the first param
+		// `this` remains unchanged so we can still use a vcall
+		StartPrepSDKCall(SDKCall_Raw);
+		PrepSDKCall_SetFromConf(hGameConf, SDKConf_Virtual, "CAttributeManager::ApplyAttributeStringWrapper");
+		PrepSDKCall_SetReturnInfo(SDKType_PlainOldData, SDKPass_Plain); // return string_t
+		PrepSDKCall_AddParameter(SDKType_PlainOldData, SDKPass_Pointer); // return value too
+		PrepSDKCall_AddParameter(SDKType_PlainOldData, SDKPass_Plain); // string_t initial value
+		PrepSDKCall_AddParameter(SDKType_CBaseEntity, SDKPass_Pointer); // CBaseEntity* entity
+		PrepSDKCall_AddParameter(SDKType_PlainOldData, SDKPass_Plain); // string_t attribute class
+		PrepSDKCall_AddParameter(SDKType_PlainOldData, SDKPass_Plain); // CUtlVector<CBaseEntity*>, set to nullptr
+		hSDKAttributeApplyStringWrapperWindows = EndPrepSDKCall();
+	}
+	
+	if (!hSDKAttributeApplyStringWrapperWindows && !hSDKAttributeApplyStringWrapperLinux) {
+		SetFailState("Could not initialize call to CAttributeManager::ApplyAttributeStringWrapper");
 	}
 	
 	StartPrepSDKCall(SDKCall_Raw); // CEconItemAttribute*
@@ -927,6 +963,50 @@ public int Native_HookValueInt(Handle plugin, int numParams) {
 			Address_Null, false);
 }
 
+/* native void TF2Attrib_HookValueString(const char[] initial, const char[] attrClass,
+		int iEntity, char[] buffer, int maxlen); */
+public int Native_HookValueString(Handle plugin, int numParams) {
+	int buflen;
+	
+	GetNativeStringLength(1, buflen);
+	char[] inputValue = new char[++buflen];
+	GetNativeString(1, inputValue, buflen);
+	
+	GetNativeStringLength(2, buflen);
+	char[] attrClass = new char[++buflen];
+	GetNativeString(2, attrClass, buflen);
+	
+	int entity = GetNativeCell(3);
+	
+	// string needs to be pooled for caching purposes
+	Address pInput = AllocPooledString(inputValue);
+	Address pAttrClass = AllocPooledString(attrClass);
+	
+	buflen = GetNativeCell(5);
+	char[] output = new char[buflen];
+	
+	Address pOutput;
+	if (hSDKAttributeApplyStringWrapperWindows) {
+		// windows version; hidden ptr pushes params, `this` still in correct register
+		Address result;
+		pOutput = SDKCall(hSDKAttributeApplyStringWrapperWindows,
+				GetEntityAttributeManager(entity), result, pInput, entity, pAttrClass,
+				Address_Null);
+	} else if (hSDKAttributeApplyStringWrapperLinux) {
+		// linux version; hidden ptr moves the stack and this forward
+		Address result;
+		pOutput = SDKCall(hSDKAttributeApplyStringWrapperLinux, result,
+				GetEntityAttributeManager(entity), pInput, entity, pAttrClass, Address_Null);
+	}
+	
+	// read from the output string_t
+	LoadStringFromAddress(DereferencePointer(pOutput), output, buflen);
+	
+	int written;
+	SetNativeString(4, output, buflen, .bytes = written);
+	return written;
+}
+
 /* helper functions */
 
 static Address GetItemSchema() {
@@ -1212,6 +1292,28 @@ static int ReadStringAttributeValue(Address pRawValue, char[] buffer, int maxlen
 	Address pString;
 	SDKCall(hSDKCopyStringAttributeToCharPointer, pRawValue, pString);
 	return LoadStringFromAddress(pString, buffer, maxlen);
+}
+
+/**
+ * Inserts a string into the game's string pool.  This uses the same implementation that is in
+ * SourceMod's core:
+ * 
+ * https://github.com/alliedmodders/sourcemod/blob/b14c18ee64fc822dd6b0f5baea87226d59707d5a/core/HalfLife2.cpp#L1415-L1423
+ */
+stock Address AllocPooledString(const char[] value) {
+	int ent = FindEntityByClassname(-1, "worldspawn");
+	if (!IsValidEntity(ent)) {
+		return Address_Null;
+	}
+	int offset = FindDataMapInfo(ent, "m_iName");
+	if (offset <= 0) {
+		return Address_Null;
+	}
+	Address pOrig = view_as<Address>(GetEntData(ent, offset));
+	DispatchKeyValue(ent, "targetname", value);
+	Address pValue = view_as<Address>(GetEntData(ent, offset));
+	SetEntData(ent, offset, pOrig);
+	return pValue;
 }
 
 stock int LoadFromAddressOffset(Address addr, int offset, NumberType size) {

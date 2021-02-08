@@ -69,13 +69,17 @@ native Address TF2Attrib_GetByDefIndex(int iEntity, int iDefIndex);
 /**
  * Returns the string value for a given attribute on an entity, if it exists.
  * This looks through the runtime, item server, and static attribute lists in that order, returning the first available value.
+ * The result is *not* cached.
  *
  * @param iEntity		Entity index to get attribute from. Must have m_AttributeList.
  * @param strAttrib		Name of the attribute, as from the "name" key in items_game.
  * 
  * @return				Number of bytes copied.
  * @error				Invalid entity index, invalid attribute name, or attribute is not a string value.
+ * 
+ * @deprecated			Use TF2Attrib_HookValueString() instead.  This function doesn't use the attribute cache, and checking attributes that don't exist incurs a massive performance penalty.
  */
+#pragma deprecated Use TF2Attrib_HookValueString() instead
 native int TF2Attrib_GetStringValue(int iEntity, const char[] strAttrib, char[] buffer, int maxlen);
 
 /**
@@ -164,10 +168,10 @@ native void TF2Attrib_SetValue(Address pAttrib, float flValue);
 native float TF2Attrib_GetValue(Address pAttrib);
 
 /**
- * Returns the string data from its raw value representation.
+ * Returns the string data from its raw value representation (a CAttribute_String instance).
  * 
  * WARNING: This dereferences the input value!  Feeding it values that aren't CAttribute_String pointers will result in unexpected behavior, potentially crashing the server.
- * In most cases, it's recommended to use TF2Attrib_GetStringValue instead.
+ * In the case where you only want the currently active value, use TF2Attrib_HookValueString instead.
  * 
  * @param pRawValue		Raw attribute value.  You can get this value with either TF2Attrib_GetValue, TF2Attrib_GetSOCAttribs, or TF2Attrib_GetStaticAttribs.
  * @param buffer		Buffer to store the resulting string to.
@@ -297,6 +301,19 @@ native float TF2Attrib_HookValueFloat(float flInitial, const char[] attrClass, i
  * @return					Transformed initial value.
  */
 native int TF2Attrib_HookValueInt(int nInitial, const char[] attrClass, int iEntity);
+
+/**
+ * Applies a transformation to the given initial value, following the rules according to the given attribute class.
+ * 
+ * @param initial			Initial string value.  (This appears to only be returned if the entity doesn't have the attribute.)
+ * @param attrClass			The attribute class, as from the "attribute_class" key in items_game.
+ * @param iEntity			The entity that should be checked.  Checking players also checks their equipped items.
+ * @param buffer			Transformed initial value.
+ * @param maxlen			Buffer size.
+ * 
+ * @return					Number of bytes written.
+ */
+native int TF2Attrib_HookValueString(const char[] initial, const char[] attrClass, int iEntity, char[] buffer, int maxlen);
 
 /**
  * Gets whether the plugin loaded without ANY errors.
