@@ -49,6 +49,9 @@ Handle hSDKAttributeValueUnload;
 Handle hSDKAttributeValueUnloadByRef;
 Handle hSDKCopyStringAttributeToCharPointer;
 
+// caches attribute name to definition instance
+StringMap g_AttributeDefinitionMapping;
+
 // caches string_t instances from AllocPooledString
 StringMap g_AllocPooledStringCache;
 
@@ -358,6 +361,7 @@ public void OnPluginStart() {
 	delete hGameConf;
 	
 	g_ManagedAllocatedValues = new ArrayList(sizeof(HeapAttributeValue));
+	g_AttributeDefinitionMapping = new StringMap();
 	
 	g_AllocPooledStringCache = new StringMap();
 }
@@ -384,6 +388,10 @@ public void OnMapEnd() {
 		
 		g_ManagedAllocatedValues.Erase(0);
 	}
+	
+	// because attribute injection's a thing now, we invalidate our internal mappings
+	// in case everything changes during the next map
+	g_AttributeDefinitionMapping.Clear();
 	
 	// pooled strings might get purged only between map changes
 	g_AllocPooledStringCache.Clear();
@@ -1042,11 +1050,18 @@ static Address GetEntityAttributeList(int entity) {
 }
 
 static Address GetAttributeDefinitionByName(const char[] name) {
+	Address cachedResult;
+	if (g_AttributeDefinitionMapping.GetValue(name, cachedResult)) {
+		return cachedResult;
+	}
+	
 	Address pSchema = GetItemSchema();
 	if (!pSchema) {
 		return Address_Null;
 	}
-	return SDKCall(hSDKGetAttributeDefByName, pSchema, name);
+	cachedResult = SDKCall(hSDKGetAttributeDefByName, pSchema, name);
+	g_AttributeDefinitionMapping.SetValue(name, cachedResult);
+	return cachedResult;
 }
 
 static Address GetAttributeDefinitionByID(int id) {
