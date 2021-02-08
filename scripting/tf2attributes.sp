@@ -859,11 +859,16 @@ public int Native_AddCustomAttribute(Handle plugin, int numParams) {
 	
 	int client = GetNativeCell(1);
 	GetNativeString(2, strAttrib, sizeof(strAttrib));
+	
+	if (!GetAttributeDefinitionByName(strAttrib)) {
+		return ThrowNativeError(SP_ERROR_NATIVE, "Attribute name '%s' is invalid", strAttrib);
+	}
+	
 	float flValue = GetNativeCell(3);
 	float flDuration = GetNativeCell(4);
 	
 	SDKCall(hSDKAddCustomAttribute, client, strAttrib, flValue, flDuration);
-	return;
+	return 0;
 }
 
 public int Native_RemoveCustomAttribute(Handle plugin, int numParams) {
@@ -872,8 +877,12 @@ public int Native_RemoveCustomAttribute(Handle plugin, int numParams) {
 	int client = GetNativeCell(1);
 	GetNativeString(2, strAttrib, sizeof(strAttrib));
 	
+	if (!GetAttributeDefinitionByName(strAttrib)) {
+		return ThrowNativeError(SP_ERROR_NATIVE, "Attribute name '%s' is invalid", strAttrib);
+	}
+	
 	SDKCall(hSDKRemoveCustomAttribute, client, strAttrib);
-	return;
+	return 0;
 }
 
 /* native float TF2Attrib_HookValueFloat(float flInitial, const char[] attrClass, int iEntity); */
