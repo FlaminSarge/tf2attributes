@@ -1216,6 +1216,13 @@ static bool InitializeAttributeValue(int attrdef, Address pEconItemAttribute, co
 	Address pAttributeValue = pEconItemAttribute + view_as<Address>(0x08);
 	
 	if (!IsNetworkedRuntimeAttribute(pDefType)) {
+		// reusing any existing matching attribute value strings
+		Address rawAttributeValue = GetHeapManagedAttributeString(attrdef, value);
+		if (rawAttributeValue) {
+			StoreToAddress(pAttributeValue, view_as<any>(rawAttributeValue), NumberType_Int32);
+			return true;
+		}
+		
 		/**
 		 * initialize raw value; any existing values present in the CEconItemAttribute* are trashed
 		 * 
@@ -1241,6 +1248,36 @@ static bool InitializeAttributeValue(int attrdef, Address pEconItemAttribute, co
 		return false;
 	}
 	return true;
+}
+
+/**
+ * Returns the address of an existing instance for the given attribute definition and string
+ * value, if it exists.
+ */
+static Address GetHeapManagedAttributeString(int attrdef, const char[] value) {
+	/**
+	 * we restrict it to strings as we don't have a way to determine equality on non-string
+	 * attributes.
+	 */
+	if (!IsAttributeString(attrdef)) {
+		return Address_Null;
+	}
+	
+	for (int i, n = g_ManagedAllocatedValues.Length; i < n; i++) {
+		HeapAttributeValue existingAttribute;
+		g_ManagedAllocatedValues.GetArray(i, existingAttribute, sizeof(existingAttribute));
+		
+		if (existingAttribute.m_iAttributeDefinitionIndex != attrdef) {
+			continue;
+		}
+		
+		char attributeString[PLATFORM_MAX_PATH];
+		ReadStringAttributeValue(existingAttribute.m_pAttributeValue, attributeString, sizeof(attributeString));
+		if (StrEqual(attributeString, value)) {
+			return existingAttribute.m_pAttributeValue;
+		}
+	}
+	return Address_Null;
 }
 
 /**
