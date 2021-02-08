@@ -49,6 +49,9 @@ Handle hSDKAttributeValueUnload;
 Handle hSDKAttributeValueUnloadByRef;
 Handle hSDKCopyStringAttributeToCharPointer;
 
+// caches string_t instances from AllocPooledString
+StringMap g_AllocPooledStringCache;
+
 /**
  * since the game doesn't free heap-allocated non-GC attributes, we're taking on that
  * responsibility
@@ -355,6 +358,8 @@ public void OnPluginStart() {
 	delete hGameConf;
 	
 	g_ManagedAllocatedValues = new ArrayList(sizeof(HeapAttributeValue));
+	
+	g_AllocPooledStringCache = new StringMap();
 }
 
 /**
@@ -379,6 +384,9 @@ public void OnMapEnd() {
 		
 		g_ManagedAllocatedValues.Erase(0);
 	}
+	
+	// pooled strings might get purged only between map changes
+	g_AllocPooledStringCache.Clear();
 }
 
 /* native bool TF2Attrib_IsIntegerValue(int iDefIndex); */
@@ -1301,6 +1309,11 @@ static int ReadStringAttributeValue(Address pRawValue, char[] buffer, int maxlen
  * https://github.com/alliedmodders/sourcemod/blob/b14c18ee64fc822dd6b0f5baea87226d59707d5a/core/HalfLife2.cpp#L1415-L1423
  */
 stock Address AllocPooledString(const char[] value) {
+	Address pValue;
+	if (g_AllocPooledStringCache.GetValue(value, pValue)) {
+		return pValue;
+	}
+	
 	int ent = FindEntityByClassname(-1, "worldspawn");
 	if (!IsValidEntity(ent)) {
 		return Address_Null;
@@ -1311,8 +1324,10 @@ stock Address AllocPooledString(const char[] value) {
 	}
 	Address pOrig = view_as<Address>(GetEntData(ent, offset));
 	DispatchKeyValue(ent, "targetname", value);
-	Address pValue = view_as<Address>(GetEntData(ent, offset));
+	pValue = view_as<Address>(GetEntData(ent, offset));
 	SetEntData(ent, offset, pOrig);
+	
+	g_AllocPooledStringCache.SetValue(value, pValue);
 	return pValue;
 }
 
