@@ -366,28 +366,15 @@ public void OnPluginStart() {
 	g_AllocPooledStringCache = new StringMap();
 }
 
+public void OnPluginEnd() {
+	DestroyManagedAllocatedValues();
+}
+
 /**
  * Free up all attribute values that we allocated ourselves.
  */
 public void OnMapEnd() {
-	// remove heap-based attributes from any existing entities so they don't leak
-	int ent = -1;
-	while ((ent = FindEntityByClassname(ent, "*")) != -1) {
-		if (!HasEntProp(ent, Prop_Send, "m_AttributeList")) {
-			continue;
-		}
-		
-		// TODO iterate attribute list and remove
-	}
-	
-	while (g_ManagedAllocatedValues.Length) {
-		HeapAttributeValue attribute;
-		g_ManagedAllocatedValues.GetArray(0, attribute, sizeof(attribute));
-		
-		attribute.Destroy();
-		
-		g_ManagedAllocatedValues.Erase(0);
-	}
+	DestroyManagedAllocatedValues();
 	
 	// because attribute injection's a thing now, we invalidate our internal mappings
 	// in case everything changes during the next map
@@ -1352,6 +1339,23 @@ static int ReadStringAttributeValue(Address pRawValue, char[] buffer, int maxlen
 	Address pString;
 	SDKCall(hSDKCopyStringAttributeToCharPointer, pRawValue, pString);
 	return LoadStringFromAddress(pString, buffer, maxlen);
+}
+
+
+/**
+ * Frees our heap-allocated managed attribute values so they don't leak.
+ * This happens on map change (where runtime attributes are invalidated) and when the plugin is
+ * unloaded.
+ */
+void DestroyManagedAllocatedValues() {
+	while (g_ManagedAllocatedValues.Length) {
+		HeapAttributeValue attribute;
+		g_ManagedAllocatedValues.GetArray(0, attribute, sizeof(attribute));
+		
+		attribute.Destroy();
+		
+		g_ManagedAllocatedValues.Erase(0);
+	}
 }
 
 /**
