@@ -367,6 +367,12 @@ public void OnPluginStart() {
 }
 
 public void OnPluginEnd() {
+	/**
+	 * We don't need to do remove-on-entities on map end since their runtime lists will be gone,
+	 * but we do need to remove them when the plugin is unloaded / reloaded, since we manage
+	 * runtime non-networked attributes ourselves and they don't outlive the plugin.
+	 */
+	RemoveNonNetworkedRuntimeAttributesOnEntities();
 	DestroyManagedAllocatedValues();
 }
 
@@ -1341,6 +1347,94 @@ static int ReadStringAttributeValue(Address pRawValue, char[] buffer, int maxlen
 	return LoadStringFromAddress(pString, buffer, maxlen);
 }
 
+/**
+ * Iterates over entities and removes any attributes that aren't networked (that is,
+ * allocated on the heap).
+ * 
+ * We must do this before we unload ourselves, otherwise the game will crash trying to look up
+ * the heap runtime attributes we managed.
+ */
+static void RemoveNonNetworkedRuntimeAttributesOnEntities() {
+	// remove heap-based attributes from any existing entities so they don't use-after-free
+	int entity = -1;
+	while ((entity = FindEntityByClassname(entity, "*")) != -1) {
+		if (!HasEntProp(entity, Prop_Send, "m_AttributeList")) {
+			continue;
+		}
+		
+		// iterate runtime attribute list and remove string attributes
+		// implementation straight from TF2Attrib_ListDefIndices, go over there for details
+		Address pAttributeList = GetEntityAttributeList(entity);
+		if (!pAttributeList) {
+			// wait, wha?
+			continue;
+		}
+		
+		// hold attribute defs pointing to heaped attributes so we don't mutate the runtime
+		// attribute list while we iterate over it - according to the CUtlVector docs the list
+		// can be realloc'd when an element is removed
+		
+		// the runtime attribute list can be any size, the current limit of 20 is on networked
+		ArrayList heapedAttribDefs = new ArrayList();
+		
+		Address pAttribListData = DereferencePointer(pAttributeList, .offset = 0x04);
+		AssertValidAddress(pAttribListData);
+		
+		int iNumAttribs = LoadFromAddressOffset(pAttributeList, 0x10, NumberType_Int32);
+		for (int i = 0; i < iNumAttribs; i++) {
+			Address pAttributeEntry = pAttribListData + view_as<Address>(i * 0x10);
+			int attrdef = LoadFromAddressOffset(pAttributeEntry, 0x04, NumberType_Int16);
+			
+			Address pAttrDef = GetAttributeDefinitionByID(attrdef);
+			if (!pAttrDef) {
+				// this shouldn't happen, but just in case
+				continue;
+			}
+			
+			Address pDefType = DereferencePointer(pAttrDef + view_as<Address>(0x08));
+			if (IsNetworkedRuntimeAttribute(pDefType)) {
+				continue;
+			}
+			
+			// verify that we own the CAttribute_String* value on this runtime instance
+			// by iterating over our managed heap entries
+			// allow plugins to `TF2Attrib_Set*()` their own instances undisturbed
+			bool bIsUnderManagement;
+			for (int j, n = g_ManagedAllocatedValues.Length; j < n && !bIsUnderManagement; j++) {
+				HeapAttributeValue a;
+				g_ManagedAllocatedValues.GetArray(j, a, sizeof(a));
+				
+				Address rawValue = view_as<any>(LoadFromAddressOffset(pAttributeEntry, 0x08,
+						NumberType_Int32));
+				if (a.m_pAttributeValue == rawValue) {
+					bIsUnderManagement = true;
+				}
+			}
+			
+			if (bIsUnderManagement) {
+				// we should be passing around pAttrDef instead,
+				// but I want the nice display printout
+				heapedAttribDefs.Push(attrdef);
+			}
+		}
+		
+		while (heapedAttribDefs.Length) {
+			int attrdef = heapedAttribDefs.Get(0);
+			heapedAttribDefs.Erase(0);
+			
+			Address pAttribDef = GetAttributeDefinitionByID(attrdef);
+			
+			PrintToServer("[tf2attributes] "
+					... "Removing heap-allocated attribute index %d from entity %d",
+					attrdef, entity);
+			
+			SDKCall(hSDKRemoveAttribute, pAttributeList, pAttribDef);
+		}
+		delete heapedAttribDefs;
+		
+		ClearAttributeCache(entity);
+	}
+}
 
 /**
  * Frees our heap-allocated managed attribute values so they don't leak.
