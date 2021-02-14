@@ -266,6 +266,7 @@ public void OnPluginStart() {
 	
 	// linux signature. this uses a hidden pointer passed in before `this` on the stack
 	// so we'll do our best with static since SM doesn't support that calling convention
+	// no subclasses override this virtual function so we'll just call it directly
 	StartPrepSDKCall(SDKCall_Static);
 	PrepSDKCall_SetFromConf(hGameConf, SDKConf_Signature, "CAttributeManager::ApplyAttributeStringWrapper");
 	PrepSDKCall_SetReturnInfo(SDKType_PlainOldData, SDKPass_Plain); // return string_t
