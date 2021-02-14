@@ -1226,20 +1226,9 @@ static void RemoveNonNetworkedRuntimeAttributesOnEntities() {
 			
 			any rawValue = LoadFromAddressOffset(pAttributeEntry, 0x08, NumberType_Int32);
 			
-			// verify that we own the value on this runtime instance
-			// by iterating over our managed heap entries
-			// allow plugins to `TF2Attrib_Set*()` their own instances undisturbed
-			bool bIsUnderManagement;
-			for (int j, n = g_ManagedAllocatedValues.Length; j < n && !bIsUnderManagement; j++) {
-				HeapAttributeValue a;
-				g_ManagedAllocatedValues.GetArray(j, a, sizeof(a));
-				
-				if (a.m_pAttributeValue == rawValue) {
-					bIsUnderManagement = true;
-				}
-			}
-			
-			if (bIsUnderManagement) {
+			// allow plugins to `TF2Attrib_Set*()` their own instances undisturbed by only
+			// processing attributes that we're aware of
+			if (IsAttributeValueInHeap(rawValue)) {
 				// we should be passing around pAttrDef instead,
 				// but I want the nice display printout
 				heapedAttribDefs.Push(attrdef);
@@ -1278,6 +1267,18 @@ void DestroyManagedAllocatedValues() {
 		
 		g_ManagedAllocatedValues.Erase(0);
 	}
+}
+
+bool IsAttributeValueInHeap(any rawValue) {
+	for (int i, n = g_ManagedAllocatedValues.Length; i < n; i++) {
+		HeapAttributeValue a;
+		g_ManagedAllocatedValues.GetArray(i, a, sizeof(a));
+		
+		if (a.m_pAttributeValue == rawValue) {
+			return true;
+		}
+	}
+	return false;
 }
 
 /**
