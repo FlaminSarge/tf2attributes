@@ -1191,15 +1191,10 @@ static void RemoveNonNetworkedRuntimeAttributesOnEntities() {
 	// remove heap-based attributes from any existing entities so they don't use-after-free
 	int entity = -1;
 	while ((entity = FindEntityByClassname(entity, "*")) != -1) {
-		if (!HasEntProp(entity, Prop_Send, "m_AttributeList")) {
-			continue;
-		}
-		
 		// iterate runtime attribute list and remove string attributes
 		// implementation straight from TF2Attrib_ListDefIndices, go over there for details
 		Address pAttributeList = GetEntityAttributeList(entity);
 		if (!pAttributeList) {
-			// wait, wha?
 			continue;
 		}
 		
