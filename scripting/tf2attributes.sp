@@ -1224,7 +1224,9 @@ static void RemoveNonNetworkedRuntimeAttributesOnEntities() {
 				continue;
 			}
 			
-			// verify that we own the CAttribute_String* value on this runtime instance
+			any rawValue = LoadFromAddressOffset(pAttributeEntry, 0x08, NumberType_Int32);
+			
+			// verify that we own the value on this runtime instance
 			// by iterating over our managed heap entries
 			// allow plugins to `TF2Attrib_Set*()` their own instances undisturbed
 			bool bIsUnderManagement;
@@ -1232,8 +1234,6 @@ static void RemoveNonNetworkedRuntimeAttributesOnEntities() {
 				HeapAttributeValue a;
 				g_ManagedAllocatedValues.GetArray(j, a, sizeof(a));
 				
-				Address rawValue = view_as<any>(LoadFromAddressOffset(pAttributeEntry, 0x08,
-						NumberType_Int32));
 				if (a.m_pAttributeValue == rawValue) {
 					bIsUnderManagement = true;
 				}
