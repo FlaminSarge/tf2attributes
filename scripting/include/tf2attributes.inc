@@ -67,22 +67,6 @@ native Address TF2Attrib_GetByName(int iEntity, const char[] strAttrib);
 native Address TF2Attrib_GetByDefIndex(int iEntity, int iDefIndex);
 
 /**
- * Returns the string value for a given attribute on an entity, if it exists.
- * This looks through the runtime, item server, and static attribute lists in that order, returning the first available value.
- * The result is *not* cached.
- *
- * @param iEntity		Entity index to get attribute from. Must have m_AttributeList.
- * @param strAttrib		Name of the attribute, as from the "name" key in items_game.
- * 
- * @return				Number of bytes copied.
- * @error				Invalid entity index, invalid attribute name, or attribute is not a string value.
- * 
- * @deprecated			Use TF2Attrib_HookValueString() instead.  This function doesn't use the attribute cache, and checking attributes that don't exist incurs a massive performance penalty.
- */
-#pragma deprecated Use TF2Attrib_HookValueString() instead
-native int TF2Attrib_GetStringValue(int iEntity, const char[] strAttrib, char[] buffer, int maxlen);
-
-/**
  * Removes an attribute from an entity.
  *
  * @param iEntity		Entity index to remove attribute from. Must have m_AttributeList.

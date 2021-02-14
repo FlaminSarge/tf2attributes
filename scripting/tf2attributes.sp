@@ -85,7 +85,6 @@ public APLRes AskPluginLoad2(Handle myself, bool late, char[] error, int err_max
 	CreateNative("TF2Attrib_SetFromStringValue", Native_SetAttribStringByName);
 	CreateNative("TF2Attrib_GetByName", Native_GetAttrib);
 	CreateNative("TF2Attrib_GetByDefIndex", Native_GetAttribByID);
-	CreateNative("TF2Attrib_GetStringValue", Native_GetAttribString);
 	CreateNative("TF2Attrib_RemoveByName", Native_Remove);
 	CreateNative("TF2Attrib_RemoveByDefIndex", Native_RemoveByID);
 	CreateNative("TF2Attrib_RemoveAll", Native_RemoveAll);
@@ -621,79 +620,6 @@ public int Native_GetAttrib(Handle plugin, int numParams) {
 	return SDKCall(hSDKGetAttributeByID, pEntAttributeList, iDefIndex);
 }
 
-/* native int TF2Attrib_GetStringValue(int iEntity, const char[] strAttrib, char[] buffer, int maxlen); */
-public int Native_GetAttribString(Handle plugin, int numParams) {
-	int entity = GetNativeCell(1);
-	if (!IsValidEntity(entity)) {
-		return ThrowNativeError(SP_ERROR_NATIVE, "Entity %d (%d) is invalid", EntIndexToEntRef(entity), entity);
-	}
-	
-	char strAttrib[MAX_ATTRIBUTE_NAME_LENGTH];
-	GetNativeString(2, strAttrib, sizeof(strAttrib));
-	
-	Address pEntAttributeList = GetEntityAttributeList(entity);
-	if (!pEntAttributeList) {
-		return ThrowNativeError(SP_ERROR_NATIVE, "Entity %d (%d) does not have property m_AttributeList", EntIndexToEntRef(entity), entity);
-	}
-	
-	int attrdef;
-	if (!GetAttributeDefIndexByName(strAttrib, attrdef)) {
-		return ThrowNativeError(SP_ERROR_NATIVE, "Attribute name '%s' is invalid", strAttrib);
-	}
-	
-	// typecheck the input attribute by verifying that the attribute deftype matches
-	if (!IsAttributeString(attrdef)) {
-		return ThrowNativeError(SP_ERROR_NATIVE, "Attribute '%s' is not a string", strAttrib);
-	}
-	
-	/**
-	 * this is a mess.
-	 */
-	Address pRawValue = Address_Null;
-	
-	// try reading from runtime list
-	Address pEconItemAttribute = SDKCall(hSDKGetAttributeByID, pEntAttributeList, attrdef);
-	if (pEconItemAttribute) {
-		pRawValue = DereferencePointer(pEconItemAttribute, 0x08);
-	}
-	
-	// iterate over item server attributes if it's not in runtime
-	if (!pRawValue) {
-		int attrdefSOC;
-		any attrvalSOC;
-		for (int i, n = GetSOCAttribCount(entity); i < n && !pRawValue; i++) {
-			GetSOCAttribEntry(entity, i, attrdefSOC, attrvalSOC);
-			if (attrdefSOC == attrdef) {
-				pRawValue = attrvalSOC;
-			}
-		}
-	}
-	
-	// iterate over static attributes if it's not in runtime nor item server
-	if (!pRawValue && HasEntProp(entity, Prop_Send, "m_iItemDefinitionIndex")) {
-		int itemdef = GetEntProp(entity, Prop_Send, "m_iItemDefinitionIndex");
-		int attrdefSOC;
-		any attrvalSOC;
-		for (int i, n = GetStaticAttribCount(itemdef); i < n && !pRawValue; i++) {
-			GetStaticAttribEntry(itemdef, i, attrdefSOC, attrvalSOC);
-			if (attrdefSOC == attrdef) {
-				pRawValue = attrvalSOC;
-			}
-		}
-	}
-	
-	if (!pRawValue) {
-		return 0;
-	}
-	
-	int maxlen = GetNativeCell(4), length;
-	char[] buffer = new char[maxlen];
-	
-	ReadStringAttributeValue(pRawValue, buffer, maxlen);
-	SetNativeString(3, buffer, maxlen, .bytes = length);
-	return length;
-}
-
 /* native Address TF2Attrib_GetByDefIndex(int iEntity, int iDefIndex); */
 public int Native_GetAttribByID(Handle plugin, int numParams) {
 	int entity = GetNativeCell(1);
@@ -1064,100 +990,6 @@ static Address GetAttributeDefinitionByID(int id) {
 		return Address_Null;
 	}
 	return SDKCall(hSDKGetAttributeDef, pSchema, id);
-}
-
-/**
- * Returns the address of the CUtlVector<static_attrib_t>* containing attributes from the item
- * server.
- */
-static Address GetSOCAttribList(int iEntity) {
-	Address pEconItemView = GetEntityEconItemView(iEntity);
-	if (!pEconItemView) {
-		return Address_Null;
-	}
-	
-	// pEconItem may be null if the item doesn't have SOC data (i.e., not from the item server)
-	Address pEconItem = SDKCall(hSDKGetSOCData, pEconItemView);
-	if (!pEconItem) {
-		return Address_Null;
-	}
-	
-	// 0x34 = CEconItem.m_pAttributes (type CUtlVector<static_attrib_t>*, possibly null)
-	Address pCustomData = DereferencePointer(pEconItem, .offset = 0x34);
-	return pCustomData;
-}
-
-static int GetSOCAttribCount(int iEntity) {
-	Address pCustomData = GetSOCAttribList(iEntity);
-	if (!pCustomData) {
-		return 0;
-	}
-	
-	AssertValidAddress(pCustomData);
-	
-	// 0x0C = (...) m_pAttributes->m_Size (m_pAttributes + 0x0C)
-	// 0x00 = (...) m_pAttributes->m_Memory.m_pMemory (m_pAttributes + 0x00)
-	return LoadFromAddressOffset(pCustomData, 0x0C, NumberType_Int32);
-}
-
-static bool GetSOCAttribEntry(int iEntity, int index, int &attrdef, any &rawValue) {
-	Address pCustomData = GetSOCAttribList(iEntity);
-	if (!pCustomData) {
-		return false;
-	}
-	
-	AssertValidAddress(pCustomData);
-	
-	// 0x0C = (...) m_pAttributes->m_Size (m_pAttributes + 0x0C)
-	// 0x00 = (...) m_pAttributes->m_Memory.m_pMemory (m_pAttributes + 0x00)
-	if (index < 0 || index >= GetSOCAttribCount(iEntity)) {
-		return false;
-	}
-	
-	Address pCustomDataArray = DereferencePointer(pCustomData);
-	
-	// Read static_attrib_t (size 0x08) entries from contiguous block of memory
-	Address pSOCAttribEntry = pCustomDataArray + view_as<Address>(index * 0x08);
-	
-	attrdef = LoadFromAddress(pSOCAttribEntry, NumberType_Int16);
-	rawValue = LoadFromAddressOffset(pSOCAttribEntry, 0x04, NumberType_Int32);
-	return true;
-}
-
-static Address GetStaticAttribList(int iItemDefIndex) {
-	Address pSchema = GetItemSchema();
-	if (!pSchema) {
-		return Address_Null;
-	}
-	
-	// this always returns an itemdef, even if it's just falling back to default
-	Address pItemDef = SDKCall(hSDKGetItemDefinition, pSchema, iItemDefIndex);
-	
-	return pItemDef + view_as<Address>(0x1C);
-}
-
-static int GetStaticAttribCount(int iItemDefIndex) {
-	Address pAttribList = GetStaticAttribList(iItemDefIndex);
-	
-	// 0x1C = CEconItemDefinition.m_Attributes (type CUtlVector<static_attrib_t>)
-	// 0x1C = (...) m_Attributes.m_Memory.m_pMemory (m_Attributes + 0x00)
-	// 0x28 = (...) m_Attributes.m_Size (m_Attributes + 0x0C)
-	return LoadFromAddressOffset(pAttribList, 0xC, NumberType_Int32);
-}
-
-static bool GetStaticAttribEntry(int iItemDefIndex, int index, int &attrdef, any &rawValue) {
-	if (index < 0 || index >= GetStaticAttribCount(iItemDefIndex)) {
-		return false;
-	}
-	
-	Address pAttribList = GetStaticAttribList(iItemDefIndex);
-	Address pAttribData = DereferencePointer(pAttribList);
-	
-	// Read static_attrib_t (size 0x08) entries from contiguous block of memory
-	Address pStaticAttribEntry = pAttribData + view_as<Address>(index * 0x08);
-	attrdef = LoadFromAddress(pStaticAttribEntry, NumberType_Int16);
-	rawValue = LoadFromAddressOffset(pStaticAttribEntry, 0x04, NumberType_Int32);
-	return true;
 }
 
 /** 
