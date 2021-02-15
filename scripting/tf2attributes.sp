@@ -588,7 +588,7 @@ public int Native_SetAttribStringByName(Handle plugin, int numParams) {
 	}
 	
 	// allocate a CEconItemAttribute instance in an entity's runtime attribute list
-	Address pEconItemAttribute = FindOrCreateEconItemAttribute(entity, attrdef);
+	Address pEconItemAttribute = FindOrAllocateEconItemAttribute(entity, attrdef);
 	if (!InitializeAttributeValue(attrdef, pEconItemAttribute, strAttribVal)) {
 		return false;
 	}
@@ -1019,20 +1019,20 @@ static Address GetEntityAttributeManager(int entity) {
 
 /**
  * Returns the address of a CEconItemAttribute instance on an entity with the given attribute
- * definition index, creating it if one doesn't already exist.
+ * definition index, allocating it if one doesn't already exist.  For networked attributes this
+ * is zero-initialized; heap-based attributes are considered uninitialized.
  */
-static Address FindOrCreateEconItemAttribute(int entity, int attrdef) {
-	int offs_AttributeList = GetEntSendPropOffs(entity, "m_AttributeList", true);
-	if (offs_AttributeList == -1) {
-		return Address_Null;
-	}
-	
+static Address FindOrAllocateEconItemAttribute(int entity, int attrdef) {
 	Address pAttrDef = GetAttributeDefinitionByID(attrdef);
 	if (!pAttrDef) {
 		return Address_Null;
 	}
 	
-	Address pAttributeList = GetEntityAddress(entity) + view_as<Address>(offs_AttributeList);
+	Address pAttributeList = GetEntityAttributeList(entity);
+	if (!pAttributeList) {
+		// we checked this before, but just in case refactors happen...
+		return Address_Null;
+	}
 	
 	Address pEconItemAttribute = SDKCall(hSDKGetAttributeByID, pAttributeList, attrdef);
 	if (!pEconItemAttribute) {
