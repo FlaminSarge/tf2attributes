@@ -28,6 +28,23 @@ native bool TF2Attrib_SetByName(int iEntity, const char[] strAttrib, float flVal
 native bool TF2Attrib_SetByDefIndex(int iEntity, int iDefIndex, float flValue);
 
 /**
+ * Parses the attribute name and value strings and applies it on the entity.  This parses
+ * numeric and string attributes.
+ * 
+ * If you use this on a non-numeric attribute, make sure that only the server reads off of that
+ * attribute.  Non-primitive values aren't replicated correctly between the client and the
+ * server; the client will read garbage and may crash!
+ * 
+ * @param iEntity		Entity index to set the attribute on. Must have m_AttributeList.
+ * @param strAttrib		Name of the attribute, as from the "name" key in items_game.
+ * @param strValue		Value to set the attribute to.
+ * 
+ * @return				True if the attribute was added successfully, false if the attribute name was invalid.
+ * @error				Invalid entity index or entity does not have m_AttributeList.
+ */
+native bool TF2Attrib_SetFromStringValue(int iEntity, const char[] strAttrib, const char[] strValue);
+
+/**
  * Returns the address of an attribute on an entity.
  *
  * @param iEntity		Entity index to get attribute from. Must have m_AttributeList.
@@ -133,6 +150,20 @@ native void TF2Attrib_SetValue(Address pAttrib, float flValue);
  * @return				The floating point value of m_flValue on the attribute.
  */
 native float TF2Attrib_GetValue(Address pAttrib);
+
+/**
+ * Returns the string data from its raw value representation (a CAttribute_String instance).
+ * 
+ * WARNING: This dereferences the input value!  Feeding it values that aren't CAttribute_String pointers will result in unexpected behavior, potentially crashing the server.
+ * In the case where you only want the currently active value, use TF2Attrib_HookValueString instead.
+ * 
+ * @param pRawValue		Raw attribute value.  You can get this value with either TF2Attrib_GetValue, TF2Attrib_GetSOCAttribs, or TF2Attrib_GetStaticAttribs.
+ * @param buffer		Buffer to store the resulting string to.
+ * @param maxlen		Maximum length of the buffer.
+ * 
+ * @return Number of bytes written.
+ */
+native int TF2Attrib_UnsafeGetStringValue(any pRawValue, char[] buffer, int maxlen);
 
 /**
  * Sets the value of m_nRefundableCurrency on an attribute.
@@ -254,6 +285,19 @@ native float TF2Attrib_HookValueFloat(float flInitial, const char[] attrClass, i
  * @return					Transformed initial value.
  */
 native int TF2Attrib_HookValueInt(int nInitial, const char[] attrClass, int iEntity);
+
+/**
+ * Applies a transformation to the given initial value, following the rules according to the given attribute class.
+ * 
+ * @param initial			Initial string value.  (This appears to only be returned if the entity doesn't have the attribute.)
+ * @param attrClass			The attribute class, as from the "attribute_class" key in items_game.
+ * @param iEntity			The entity that should be checked.  Checking players also checks their equipped items.
+ * @param buffer			Transformed initial value.
+ * @param maxlen			Buffer size.
+ * 
+ * @return					Number of bytes written.
+ */
+native int TF2Attrib_HookValueString(const char[] initial, const char[] attrClass, int iEntity, char[] buffer, int maxlen);
 
 /**
  * Gets whether the plugin loaded without ANY errors.
