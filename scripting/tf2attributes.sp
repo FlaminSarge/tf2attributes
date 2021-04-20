@@ -1205,10 +1205,16 @@ static void RemoveNonNetworkedRuntimeAttributesOnEntities() {
 		// the runtime attribute list can be any size, the current limit of 20 is on networked
 		ArrayList heapedAttribDefs = new ArrayList();
 		
+		int iNumAttribs = LoadFromAddressOffset(pAttributeList, 0x10, NumberType_Int32);
+		if (!iNumAttribs) {
+			continue;
+		}
+		
 		Address pAttribListData = DereferencePointer(pAttributeList, .offset = 0x04);
+		
+		// we know there are attributes; make sure our contiguous memory is valid
 		AssertValidAddress(pAttribListData);
 		
-		int iNumAttribs = LoadFromAddressOffset(pAttributeList, 0x10, NumberType_Int32);
 		for (int i = 0; i < iNumAttribs; i++) {
 			Address pAttributeEntry = pAttribListData + view_as<Address>(i * 0x10);
 			int attrdef = LoadFromAddressOffset(pAttributeEntry, 0x04, NumberType_Int16);
