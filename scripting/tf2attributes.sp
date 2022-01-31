@@ -7,7 +7,7 @@
 
 #define PLUGIN_NAME		"[TF2] TF2Attributes"
 #define PLUGIN_AUTHOR		"FlaminSarge"
-#define PLUGIN_VERSION		"1.3.3@nosoop-1.7.0"
+#define PLUGIN_VERSION		"1.3.3@nosoop-1.7.1"
 #define PLUGIN_CONTACT		"http://forums.alliedmods.net/showthread.php?t=210221"
 #define PLUGIN_DESCRIPTION	"Functions to add/get attributes for TF2 players/items"
 
@@ -470,6 +470,11 @@ static int GetSOCAttribs(int iEntity, int[] iAttribIndices, int[] iAttribValues,
 		// 0x0C = (...) m_pAttributes->m_Size (m_pAttributes + 0x0C)
 		// 0x00 = (...) m_pAttributes->m_Memory.m_pMemory (m_pAttributes + 0x00)
 		int iCount = LoadFromAddressOffset(pCustomData, 0x0C, NumberType_Int32);
+		if (!iCount) {
+			// abort early if the attribute list is empty -- we might deref garbage otherwise
+			return 0;
+		}
+		
 		Address pCustomDataArray = DereferencePointer(pCustomData);
 		
 		// Read static_attrib_t (size 0x08) entries from contiguous block of memory
