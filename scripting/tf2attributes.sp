@@ -7,7 +7,7 @@
 
 #define PLUGIN_NAME		"[TF2] TF2Attributes"
 #define PLUGIN_AUTHOR		"FlaminSarge"
-#define PLUGIN_VERSION		"1.3.3@nosoop-1.7.1"
+#define PLUGIN_VERSION		"1.3.3@nosoop-1.7.1.1"
 #define PLUGIN_CONTACT		"http://forums.alliedmods.net/showthread.php?t=210221"
 #define PLUGIN_DESCRIPTION	"Functions to add/get attributes for TF2 players/items"
 
@@ -409,6 +409,10 @@ static int GetStaticAttribs(Address pItemDef, int[] iAttribIndices, int[] iAttri
 	// 0x1C = (...) m_Attributes.m_Memory.m_pMemory (m_Attributes + 0x00)
 	// 0x28 = (...) m_Attributes.m_Size (m_Attributes + 0x0C)
 	int iNumAttribs = LoadFromAddressOffset(pItemDef, 0x28, NumberType_Int32);
+	if (!iNumAttribs) {
+		return 0;
+	}
+	
 	Address pAttribList = DereferencePointer(pItemDef, .offset = 0x1C);
 	
 	// Read static_attrib_t (size 0x08) entries from contiguous block of memory
@@ -804,13 +808,17 @@ public int Native_ListIDs(Handle plugin, int numParams) {
 		return ThrowNativeError(SP_ERROR_NATIVE, "Entity %d (%d) does not have property m_AttributeList", EntIndexToEntRef(entity), entity);
 	}
 	
+	// 0x10 = CAttributeList.m_Attributes.m_Size (m_Attributes + 0x0C)
+	int iNumAttribs = LoadFromAddressOffset(pAttributeList, 0x10, NumberType_Int32);
+	if (!iNumAttribs) {
+		return 0;
+	}
+	
 	// 0x04 = CAttributeList.m_Attributes (type CUtlVector<CEconItemAttribute>)
 	// 0x04 = CAttributeList.m_Attributes.m_Memory.m_pMemory
 	Address pAttribListData = DereferencePointer(pAttributeList, .offset = 0x04);
 	AssertValidAddress(pAttribListData);
 	
-	// 0x10 = CAttributeList.m_Attributes.m_Size (m_Attributes + 0x0C)
-	int iNumAttribs = LoadFromAddressOffset(pAttributeList, 0x10, NumberType_Int32);
 	int[] iAttribIndices = new int[size];
 	
 	// Read CEconItemAttribute (size 0x10) entries from contiguous block of memory
