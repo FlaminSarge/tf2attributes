@@ -43,7 +43,10 @@ This fork is forward compatible with FlaminSarge/tf2attributes &mdash; all plugi
 their version should continue to work with this one.  The installation instructions remain the
 same.
 
-1. Copy `tf2attributes.smx` to `addons/sourcemod/plugins/`.
-2. Copy `tf2.attributes.txt` to `addons/sourcemod/gamedata/`.
-3. If you're a developer, copy `tf2attributes.inc` to `addons/sourcemod/scripting/include/`
+1. Download all the non-source code files in [the latest release][].
+2. Copy `tf2attributes.smx` to `addons/sourcemod/plugins/`.
+3. Copy `tf2.attributes.txt` to `addons/sourcemod/gamedata/`.
+4. If you're a developer, copy `tf2attributes.inc` to `addons/sourcemod/scripting/include/`
 (or the appropriate path for your compiler toolchain / project).
+
+[the latest release]: https://github.com/nosoop/tf2attributes/releases
