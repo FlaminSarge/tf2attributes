@@ -1,0 +1,49 @@
+# Builds when a release is published.
+name: Release Build
+
+on:
+  release:
+    types: [published]
+
+jobs:
+  run:
+    name: Build Release Package
+    runs-on: ubuntu-20.04
+    steps:
+    - uses: actions/checkout@v2
+    - name: Setup SourcePawn Compiler
+      uses: rumblefrog/setup-sp@v1.2.1
+      with:
+        version: "1.10.x"
+    - name: Compile tf2attributes
+      run: spcomp scripting/tf2attributes.sp
+    - name: Upload Include
+      id: upload-release-include
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ github.event.release.upload_url  }}
+        asset_path: ./scripting/include/tf2attributes.inc
+        asset_name: tf2attributes.inc
+        asset_content_type: text/plain
+    - name: Upload Plugin
+      id: upload-release-plugin
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ github.event.release.upload_url  }}
+        asset_path: ./tf2attributes.smx
+        asset_name: tf2attributes.smx
+        asset_content_type: application/octet-stream
+    - name: Upload Game Config
+      id: upload-release-gamedata
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ github.event.release.upload_url  }}
+        asset_path: ./gamedata/tf2.attributes.txt
+        asset_name: tf2.attributes.txt
+        asset_content_type: text/plain
