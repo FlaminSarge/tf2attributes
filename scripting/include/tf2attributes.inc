@@ -13,7 +13,7 @@
  * @return				True if the attribute was added successfully, false if entity does not have m_AttributeList.
  * @error				Invalid entity index or attribute name passed.
  */
-native bool TF2Attrib_SetByName(int iEntity, char[] strAttrib, float flValue);
+native bool TF2Attrib_SetByName(int iEntity, const char[] strAttrib, float flValue);
 
 /**
  * Sets an attribute's value on an entity, adding it if it isn't on the entity.
@@ -28,6 +28,23 @@ native bool TF2Attrib_SetByName(int iEntity, char[] strAttrib, float flValue);
 native bool TF2Attrib_SetByDefIndex(int iEntity, int iDefIndex, float flValue);
 
 /**
+ * Parses the attribute name and value strings and applies it on the entity.  This parses
+ * numeric and string attributes.
+ * 
+ * If you use this on a non-numeric attribute, make sure that only the server reads off of that
+ * attribute.  Non-primitive values aren't replicated correctly between the client and the
+ * server; the client will read garbage and may crash!
+ * 
+ * @param iEntity		Entity index to set the attribute on. Must have m_AttributeList.
+ * @param strAttrib		Name of the attribute, as from the "name" key in items_game.
+ * @param strValue		Value to set the attribute to.
+ * 
+ * @return				True if the attribute was added successfully, false if the attribute name was invalid.
+ * @error				Invalid entity index or entity does not have m_AttributeList.
+ */
+native bool TF2Attrib_SetFromStringValue(int iEntity, const char[] strAttrib, const char[] strValue);
+
+/**
  * Returns the address of an attribute on an entity.
  *
  * @param iEntity		Entity index to get attribute from. Must have m_AttributeList.
@@ -36,7 +53,7 @@ native bool TF2Attrib_SetByDefIndex(int iEntity, int iDefIndex, float flValue);
  * @return				Address of the attribute on the entity, or Address_Null if the attribute does not exist on the entity.
  * @error				Invalid entity index or attribute name passed.
  */
-native Address TF2Attrib_GetByName(int iEntity, char[] strAttrib);
+native Address TF2Attrib_GetByName(int iEntity, const char[] strAttrib);
 
 /**
  * Returns the address of an attribute (by attribute index) on an entity.
@@ -58,7 +75,7 @@ native Address TF2Attrib_GetByDefIndex(int iEntity, int iDefIndex);
  * @return				True if the SDKCall was made, false if entity had invalid address or m_AttributeList missing.
  * @error				Invalid entity index or attribute name passed.
  */
-native bool TF2Attrib_RemoveByName(int iEntity, char[] strAttrib);
+native bool TF2Attrib_RemoveByName(int iEntity, const char[] strAttrib);
 
 /**
  * Removes an attribute from an entity.
@@ -135,6 +152,20 @@ native void TF2Attrib_SetValue(Address pAttrib, float flValue);
 native float TF2Attrib_GetValue(Address pAttrib);
 
 /**
+ * Returns the string data from its raw value representation (a CAttribute_String instance).
+ * 
+ * WARNING: This dereferences the input value!  Feeding it values that aren't CAttribute_String pointers will result in unexpected behavior, potentially crashing the server.
+ * In the case where you only want the currently active value, use TF2Attrib_HookValueString instead.
+ * 
+ * @param pRawValue		Raw attribute value.  You can get this value with either TF2Attrib_GetValue, TF2Attrib_GetSOCAttribs, or TF2Attrib_GetStaticAttribs.
+ * @param buffer		Buffer to store the resulting string to.
+ * @param maxlen		Maximum length of the buffer.
+ * 
+ * @return Number of bytes written.
+ */
+native int TF2Attrib_UnsafeGetStringValue(any pRawValue, char[] buffer, int maxlen);
+
+/**
  * Sets the value of m_nRefundableCurrency on an attribute.
  *
  * @param pAttrib		Address of the attribute.
@@ -203,6 +234,72 @@ native int TF2Attrib_GetSOCAttribs(int iEntity, int[] iAttribIndices, float[] fl
 native bool TF2Attrib_IsIntegerValue(int iDefIndex);
 
 /**
+ * Returns true if an attribute with the specified name exists.
+ *
+ * @param strAttrib			Name of the attribute, as from the "name" key in items_game.
+ *
+ * @return					True if the attribute exists, false otherwise.
+ */
+native bool TF2Attrib_IsValidAttributeName(const char[] strAttrib);
+
+/** 
+ * Adds a custom, potentially temporary attribute to a player.
+ * 
+ * @param client			Client index to set the attribute on.
+ * @param strAttrib			Name of the attribute, as from the "name" key in items_game.
+ * @param flValue			Value to set m_flValue to.
+ * @param flDuration		Duration of the attribute.  If less than 0, the attribute will not be automatically removed.
+ * 
+ * @noreturn
+ */
+native void TF2Attrib_AddCustomPlayerAttribute(int client, const char[] strAttrib, float flValue, float flDuration = -1.0);
+
+/**
+ * Removes a previously applied custom attribute on a player.
+ *
+ * @param client			Client index to remove the attribute from.
+ * @param strAttrib			Name of the attribute, as from the "name" key in items_game.
+ *
+ * @noreturn
+ */
+native void TF2Attrib_RemoveCustomPlayerAttribute(int client, const char[] strAttrib);
+
+/**
+ * Applies a transformation to the given initial value, following the rules according to the given attribute class.
+ * 
+ * @param flInitial			Initial float value.
+ * @param attrClass			The attribute class, as from the "attribute_class" key in items_game.
+ * @param iEntity			The entity that should be checked.  Checking players also checks their equipped items.
+ * 
+ * @return					Transformed initial value.
+ */
+native float TF2Attrib_HookValueFloat(float flInitial, const char[] attrClass, int iEntity);
+
+/**
+ * Applies a transformation to the given initial value, following the rules according to the given attribute class.
+ * 
+ * @param nInitial			Initial integer value.
+ * @param attrClass			The attribute class, as from the "attribute_class" key in items_game.
+ * @param iEntity			The entity that should be checked.  Checking players also checks their equipped items.
+ * 
+ * @return					Transformed initial value.
+ */
+native int TF2Attrib_HookValueInt(int nInitial, const char[] attrClass, int iEntity);
+
+/**
+ * Applies a transformation to the given initial value, following the rules according to the given attribute class.
+ * 
+ * @param initial			Initial string value.  (This appears to only be returned if the entity doesn't have the attribute.)
+ * @param attrClass			The attribute class, as from the "attribute_class" key in items_game.
+ * @param iEntity			The entity that should be checked.  Checking players also checks their equipped items.
+ * @param buffer			Transformed initial value.
+ * @param maxlen			Buffer size.
+ * 
+ * @return					Number of bytes written.
+ */
+native int TF2Attrib_HookValueString(const char[] initial, const char[] attrClass, int iEntity, char[] buffer, int maxlen);
+
+/**
  * Gets whether the plugin loaded without ANY errors.
  * For the purpose of allowing dependencies to ignore the plugin if this returns false.
  * Check in OnAllPluginsLoaded() or something. I dunno.
@@ -244,63 +341,12 @@ public void __pl_tf2attributes_SetNTVOptional()
 	MarkNativeAsOptional("TF2Attrib_GetSOCAttribs");
 	MarkNativeAsOptional("TF2Attrib_ListDefIndices");
 	MarkNativeAsOptional("TF2Attrib_IsIntegerValue");
+	MarkNativeAsOptional("TF2Attrib_IsValidAttributeName");
+	MarkNativeAsOptional("TF2Attrib_AddCustomPlayerAttribute");
+	MarkNativeAsOptional("TF2Attrib_RemoveCustomPlayerAttribute");
+	MarkNativeAsOptional("TF2Attrib_HookValueFloat");
+	MarkNativeAsOptional("TF2Attrib_HookValueInt");
+	
 	MarkNativeAsOptional("TF2Attrib_IsReady");
-
-//	MarkNativeAsOptional("TF2Attrib_SetInitialValue");
-//	MarkNativeAsOptional("TF2Attrib_GetInitialValue");
-//	MarkNativeAsOptional("TF2Attrib_SetIsSetBonus");
-//	MarkNativeAsOptional("TF2Attrib_GetIsSetBonus");
 }
 #endif
-
-//OLD things lie here
-//flInitialValue and bSetBonus don't exist anymore
-/**
- * Sets the value of m_flInitialValue on an attribute.
- *
- * @param pAttrib		Address of the attribute.
- * @param flValue		Value to set m_flInitialValue to.
- *
- * @noreturn
- */
-//native TF2Attrib_SetInitialValue(Address pAttrib, float flValue);
-
-/**
- * Returns the value of m_flInitialValue on an attribute.
- *
- * @param pAttrib		Address of the attribute.
- *
- * @return				The floating point value of m_flInitialValue on the attribute.
- */
-//native float TF2Attrib_GetInitialValue(Address pAttrib);
-
-/**
- * Sets the boolean value of m_bSetBonus on an attribute.
- *
- * @param pAttrib		Address of the attribute.
- * @param bSetBonus		Value to set m_bSetBonus to.
- *
- * @noreturn
- */
-//native TF2Attrib_SetIsSetBonus(Address pAttrib, bool bSetBonus);
-
-/**
- * Returns the boolean value of m_bSetBonus on an attribute.
- *
- * @param pAttrib		Address of the attribute.
- *
- * @return				The boolean value of m_bSetBonus on the attribute.
- */
-//native bool TF2Attrib_GetIsSetBonus(Address pAttrib);
-
-//stock TF2Attrib_IsIntegerValue(iDefIndex)
-//{
-//	switch (iDefIndex)
-//	{
-//		case 133, 143, 147, 152, 184, 185, 186, 192, 193, 194, 198, 211, 214, 227, 228, 229, 262, 294, 302, 372, 373, 374, 379, 381, 383, 403, 420:
-//		{
-//			return true;
-//		}
-//	}
-//	return false;
-//}

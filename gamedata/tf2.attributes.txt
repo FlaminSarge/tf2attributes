@@ -11,6 +11,32 @@
 				"linux"		"14"
 				"mac"		"14"
 			}
+			"CAttributeManager::ApplyAttributeStringWrapper"
+			{
+				// linux uses a signature
+				"windows"	"15"
+			}
+			"ISchemaAttributeTypeBase::BConvertStringToEconAttributeValue"
+			{
+				"windows"	"4"
+				"linux"		"5"
+			}
+			"ISchemaAttributeTypeBase::InitializeNewEconAttributeValue"
+			{
+				"windows"	"7"
+				"linux"		"8"
+			}
+			"ISchemaAttributeTypeBase::UnloadEconAttributeValue"
+			{
+				"windows"	"8"
+				"linux"		"9"
+			}
+			"ISchemaAttributeTypeBase::BSupportsGame..."
+			{
+				// "ISchemaAttributeTypeBase::BSupportsGameplayModificationAndNetworking()"
+				"windows"	"10"
+				"linux"		"11"
+			}
 		}
 		"Signatures"
 		{
@@ -76,6 +102,54 @@
 				"windows"			"\x56\x8B\xF1\x83\x7E\x10\x00\x74\x2A\xC7\x46\x10\x00\x00\x00\x00"
 				"linux"				"@_ZN14CAttributeList20DestroyAllAttributesEv"
 				"mac"				"@_ZN14CAttributeList20DestroyAllAttributesEv"
+			}
+			"CAttributeManager::AttribHookValue<float>"
+			{
+				// (float value, string_t attrClass, CBaseEntity* ent, CUtlVector<CBaseEntity*> *reentrant, bool const_str)
+				// called in unique x-ref to "ubercharge_ammo" on Windows
+				"library"			"server"
+				"linux"				"@_ZN17CAttributeManager15AttribHookValueIfEET_S1_PKcPK11CBaseEntityP10CUtlVectorIPS4_10CUtlMemoryIS8_iEEb"
+				"windows"			"\x55\x8B\xEC\x83\xEC\x0C\x8B\x0D\x2A\x2A\x2A\x2A\x53\x56\x57\x33\xF6\x33\xFF\x89\x75\xF4\x89\x7D\xF8\x8B\x41\x08\x85\xC0\x74\x2A\x68\x2A\x2A\x2A\x2A\x68\x2A\x2A\x2A\x2A\x68\x2A\x2A\x2A\x2A\x68\x2A\x2A\x2A\x2A\x6A\x6B"
+			}
+			"CAttributeManager::AttribHookValue<int>"
+			{
+				// (int value, string_t attrClass, CBaseEntity* ent, CUtlVector<CBaseEntity*> *reentrant, bool const_str)
+				// called in unique x-ref to "mod_max_primary_clip_override" on Windows
+				"library"			"server"
+				"linux"				"@_ZN17CAttributeManager15AttribHookValueIiEET_S1_PKcPK11CBaseEntityP10CUtlVectorIPS4_10CUtlMemoryIS8_iEEb"
+				"windows"			"\x55\x8B\xEC\x83\xEC\x10\x8B\x0D\x2A\x2A\x2A\x2A\x53\x56\x57\x33\xFF\x33\xDB\x89\x7D\xF0\x89\x5D\xF4\x8B\x41\x08\x85\xC0\x74\x2A\x68\x2A\x2A\x2A\x2A\x68\x2A\x2A\x2A\x2A\x68\x2A\x2A\x2A\x2A\x68\x2A\x2A\x2A\x2A\x6A\x6B"
+			}
+			"CAttributeManager::ApplyAttributeStringWrapper"
+			{
+				// uses a hidden pointer, which ends up looking something like this monstrosity:
+				// (string_t* returnValue, CAttributeManager* this, string_t input, CBaseEntity* initiator, string_t classname, CUtlVector<CBaseEntity*>* entityList), returns string_t
+				// windows uses a (mostly) standard calling convention so we use the vtable call for that
+				"library"			"server"
+				"linux"				"@_ZN17CAttributeManager27ApplyAttributeStringWrapperE8string_tP11CBaseEntityS0_P10CUtlVectorIS2_10CUtlMemoryIS2_iEE"
+			}
+			"CTFPlayer::AddCustomAttribute" //(const char*, float, float), returns void
+			{
+				"library"			"server"
+				"windows"			"\x55\x8B\xEC\xF3\x0F\x10\x4D\x10\x83\xEC\x10"
+				"linux"				"@_ZN9CTFPlayer18AddCustomAttributeEPKcff"
+				"mac"				"@_ZN9CTFPlayer18AddCustomAttributeEPKcff"
+			}
+			"CTFPlayer::RemoveCustomAttribute" //(const char*), returns void
+			{
+				// called with x-ref string "hidden maxhealth non buffed"
+				"library"			"server"
+				"windows"			"\x55\x8B\xEC\x83\xEC\x10\x53\x56\x57\xFF\x75\x08"
+				"linux"				"@_ZN9CTFPlayer21RemoveCustomAttributeEPKc"
+				"mac"				"@_ZN9CTFPlayer21RemoveCustomAttributeEPKc"
+			}
+			"CopyStringAttributeValueToCharPointerOutput" //(CAttribute_String*, char**), returns void
+			{
+				// called from CAttributeIterator_GetTypedAttributeValue<CAttribute_String, char const*>::OnIterateAttributeValue
+				// which on Windows has a unique bytesig `55 8B EC 56 8B F1 8B 46 04 3B 45 08 75 ? FF 76 08`
+				"library"			"server"
+				"windows"			"\x55\x8B\xEC\x8B\x45\x08\x8B\x48\x10"
+				"linux"				"@_Z43CopyStringAttributeValueToCharPointerOutputPK17CAttribute_StringPPKc"
+				"mac"				"@_Z43CopyStringAttributeValueToCharPointerOutputPK17CAttribute_StringPPKc"
 			}
 		}
 	}
