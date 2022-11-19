@@ -234,7 +234,7 @@ public void OnPluginStart() {
 	PrepSDKCall_AddParameter(SDKType_String, SDKPass_Pointer);
 	hSDKRemoveCustomAttribute = EndPrepSDKCall();
 	if (!hSDKRemoveCustomAttribute) {
-		SetFailState("Could not initialize call to CTFPlayer::AddCustomAttribute");
+		SetFailState("Could not initialize call to CTFPlayer::RemoveCustomAttribute");
 	}
 	
 	StartPrepSDKCall(SDKCall_Static);
@@ -714,6 +714,7 @@ public int Native_SetID(Handle plugin, int numParams) {
 	Address pAttrib = GetNativeCell(1);
 	int iDefIndex = GetNativeCell(2);
 	StoreToAddressOffset(pAttrib, 0x04, iDefIndex, NumberType_Int16);
+	return iDefIndex;
 }
 
 /* native int TF2Attrib_GetDefIndex(Address pAttrib); */
@@ -727,6 +728,7 @@ public int Native_SetVal(Handle plugin, int numParams) {
 	Address pAttrib = GetNativeCell(1);
 	int flVal = GetNativeCell(2);	//It's a float but avoiding tag mismatch warnings from StoreToAddress
 	StoreToAddressOffset(pAttrib, 0x08, flVal, NumberType_Int32);
+	return flVal;
 }
 
 /* native float TF2Attrib_GetValue(Address pAttrib); */
@@ -752,6 +754,7 @@ public int Native_SetCurrency(Handle plugin, int numParams) {
 	Address pAttrib = GetNativeCell(1);
 	int nCurrency = GetNativeCell(2);
 	StoreToAddressOffset(pAttrib, 0x0C, nCurrency, NumberType_Int32);
+	return nCurrency;
 }
 
 /* native int TF2Attrib_GetRefundableCurrency(Address pAttrib); */

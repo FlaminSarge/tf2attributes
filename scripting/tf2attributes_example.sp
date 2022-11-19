@@ -428,7 +428,7 @@ public Action Command_GetAttrByName(int client, int args)
 	}
 	if (args > 2) GetCmdArg(3, arg3, sizeof(arg3));
 	else arg3 = "p";
-	bool usePlayer = arg3[0] != 'w';
+	bool useWeapon = arg3[0] == 'w';
 	int target = -1;
 	if (arg1[0] == '#' && arg1[1] == '#')	//'##entindex' instead of target
 	{
@@ -437,22 +437,21 @@ public Action Command_GetAttrByName(int client, int args)
 	else target = FindTarget(client, arg1, false, false);
 	if (!IsValidEntity(target)) return Plugin_Handled;
 
-	int wep = target;
-	if (!usePlayer)
+	int tgt = target;
+	if (useWeapon && target > 0 && target < MaxClients)
 	{
-		wep = GetEntPropEnt(target, Prop_Send, "m_hActiveWeapon");
-		if (!IsValidEntity(wep))
+		tgt = GetEntPropEnt(target, Prop_Send, "m_hActiveWeapon");
+		if (!IsValidEntity(tgt))
 		{
-			usePlayer = true;
-			wep = target;
+			tgt = target;
 		}
 	}
 
-	Address pAttrib = (bydefidx ? TF2Attrib_GetByDefIndex(wep, StringToInt(arg2)) : TF2Attrib_GetByName(wep, arg2));
+	Address pAttrib = (bydefidx ? TF2Attrib_GetByDefIndex(tgt, StringToInt(arg2)) : TF2Attrib_GetByName(tgt, arg2));
 	lastAddr[client] = pAttrib;
 	if (!IsValidAddress(view_as<Address>(pAttrib)))
 	{
-		ReplyToCommand(client, "[SM] GetAttrib got null attrib '%s' on %s%d", arg2, usePlayer ? "" : "active wep of ", target);//, target);
+		ReplyToCommand(client, "[SM] GetAttrib got null attrib '%s' on %s%d", arg2, tgt == target ? "" : "active wep of ", target);//, target);
 		return Plugin_Handled;
 	}
 	float result = TF2Attrib_GetValue(pAttrib);
@@ -460,7 +459,7 @@ public Action Command_GetAttrByName(int client, int args)
 	if (TF2Attrib_IsIntegerValue(idx)) result = float(view_as<int>(result));
 	float init;// = TF2Attrib_GetInitialValue(pAttrib);
 	if (TF2Attrib_IsIntegerValue(idx)) init = float(view_as<int>(init));
-	ReplyToCommand(client, "[SM] GetAttrib got: %d %d ; %.3f, %.3f, %d, %d for attrib '%s' on %s%d", view_as<int>(pAttrib), idx, result, init, TF2Attrib_GetRefundableCurrency(pAttrib), 0 /*TF2Attrib_GetIsSetBonus(pAttrib)*/, arg2, usePlayer ? "" : "active wep of ", target);//, target);
+	ReplyToCommand(client, "[SM] GetAttrib got: %08X %d ; %6.2f, %6.2f, %d, %d for attrib '%s' on %s%d", view_as<int>(pAttrib), idx, result, init, TF2Attrib_GetRefundableCurrency(pAttrib), 0 /*TF2Attrib_GetIsSetBonus(pAttrib)*/, arg2, tgt == target ? "" : "active wep of ", target);//, target);
 	return Plugin_Handled;
 }
 public Action Command_GetAttrByID(int client, int args)
@@ -479,7 +478,7 @@ public Action Command_GetAttrByID(int client, int args)
 	int index = StringToInt(arg2);
 	if (args > 2) GetCmdArg(3, arg3, sizeof(arg3));
 	else arg3 = "p";
-	bool usePlayer = arg3[0] != 'w';
+	bool useWeapon = arg3[0] == 'w';
 	int target = -1;
 	if (arg1[0] == '#' && arg1[1] == '#')	//'##entindex' instead of target
 	{
@@ -488,22 +487,21 @@ public Action Command_GetAttrByID(int client, int args)
 	else target = FindTarget(client, arg1, false, false);
 	if (!IsValidEntity(target)) return Plugin_Handled;
 
-	int wep = target;
-	if (!usePlayer)
+	int tgt = target;
+	if (useWeapon && target > 0 && target < MaxClients)
 	{
-		wep = GetEntPropEnt(target, Prop_Send, "m_hActiveWeapon");
-		if (!IsValidEntity(wep))
+		tgt = GetEntPropEnt(target, Prop_Send, "m_hActiveWeapon");
+		if (!IsValidEntity(tgt))
 		{
-			usePlayer = true;
-			wep = target;
+			tgt = target;
 		}
 	}
 
-	Address pAttrib = TF2Attrib_GetByDefIndex(wep, index);
+	Address pAttrib = TF2Attrib_GetByDefIndex(tgt, index);
 	lastAddr[client] = pAttrib;
 	if (!IsValidAddress(view_as<Address>(pAttrib)))
 	{
-		ReplyToCommand(client, "[SM] GetAttrib got null attrib '%d' on %s%d", index, usePlayer ? "" : "active wep of ", target);//, target);
+		ReplyToCommand(client, "[SM] GetAttrib got null attrib '%d' on %s%d", index, tgt == target ? "" : "active wep of ", target);//, target);
 		return Plugin_Handled;
 	}
 	float result = TF2Attrib_GetValue(pAttrib);
@@ -511,7 +509,7 @@ public Action Command_GetAttrByID(int client, int args)
 	if (TF2Attrib_IsIntegerValue(idx)) result = float(view_as<int>(result));
 	float init;// = TF2Attrib_GetInitialValue(pAttrib);
 	if (TF2Attrib_IsIntegerValue(idx)) init = float(view_as<int>(init));
-	ReplyToCommand(client, "[SM] GetAttrib got: %08X %d ; %.3f, %.3f, %d, %d for attrib '%s' on %s%d", view_as<int>(pAttrib), idx, result, init, TF2Attrib_GetRefundableCurrency(pAttrib), 0 /*TF2Attrib_GetIsSetBonus(pAttrib)*/, arg2, usePlayer ? "" : "active wep of ", target);//, target);
+	ReplyToCommand(client, "[SM] GetAttrib got: %08X %d ; %6.2f, %6.2f, %d, %d for attrib '%s' on %s%d", view_as<int>(pAttrib), idx, result, init, TF2Attrib_GetRefundableCurrency(pAttrib), 0 /*TF2Attrib_GetIsSetBonus(pAttrib)*/, arg2, tgt == target ? "" : "active wep of ", target);//, target);
 	return Plugin_Handled;
 }
 public Action Command_GetAttrs(int client, int args)
@@ -530,7 +528,7 @@ public Action Command_GetAttrs(int client, int args)
 	{
 		GetCmdArg(2, arg2, sizeof(arg2));
 	}
-	bool usePlayer = arg2[0] != 'w';
+	bool useWeapon = arg2[0] == 'w';
 	int target = -1;
 	if (arg1[0] == '#' && arg1[1] == '#')	//'##entindex' instead of target
 	{
@@ -539,45 +537,48 @@ public Action Command_GetAttrs(int client, int args)
 	else target = FindTarget(client, arg1, false, false);
 	if (!IsValidEntity(target)) return Plugin_Handled;
 
-	int wep = target;
-	if (!usePlayer)
+	int tgt = target;
+	if (useWeapon && target > 0 && target < MaxClients)
 	{
-		wep = GetEntPropEnt(target, Prop_Send, "m_hActiveWeapon");
-		if (!IsValidEntity(wep))
+		tgt = GetEntPropEnt(target, Prop_Send, "m_hActiveWeapon");
+		if (!IsValidEntity(tgt))
 		{
-			usePlayer = true;
-			wep = target;
+			tgt = target;
 		}
 	}
 
 	int attriblist[MAX_RUNTIME_ATTRIBUTES];
+	float valuelist[MAX_RUNTIME_ATTRIBUTES];
 	arg1 = "";
-	int count = TF2Attrib_ListDefIndices(wep, attriblist, sizeof(attriblist));
-	ReplyToCommand(client, "[SM] ListDefIndices: Got %d attributes on %s%d", count, usePlayer ? "" : "active wep of ", target);
+	int count = TF2Attrib_ListDefIndices(tgt, attriblist, sizeof(attriblist));
+	ReplyToCommand(client, "[SM] ListDefIndices: Got %d atts on %s%d", count, tgt == target ? "" : "active wep of ", target);
 	if (count > sizeof(attriblist))
 	{
 		ReplyToCommand(client, "Max expected was %d", sizeof(attriblist));
 	}
+	if (count > 0)
+	{
+		ReplyToCommand(client, "Runtime:");
+	}
 	for (int i = 0; i < count && i < sizeof(attriblist); i++)
 	{
-		Format(arg1, sizeof(arg1), "%s %d", arg1, attriblist[i]);
+		Address pAttrib = TF2Attrib_GetByDefIndex(tgt, attriblist[i]);
+		float value = TF2Attrib_GetValue(pAttrib);
+		ReplyToCommand(client, "- %3d: %6.2f %d", attriblist[i], value, view_as<int>(value));
 	}
-	TrimString(arg1);
 
-	ReplyToCommand(client, "Runtime: [%s]", arg1);
-	if (!usePlayer)
+	if (tgt > MaxClients)
 	{
-		float valuelist[MAX_RUNTIME_ATTRIBUTES];
-		int count_static = TF2Attrib_GetSOCAttribs(wep, attriblist, valuelist, sizeof(attriblist));
+		int count_static = TF2Attrib_GetSOCAttribs(tgt, attriblist, valuelist, sizeof(attriblist));
 		if (count_static > 0)
 		{
 			ReplyToCommand(client, "SOC:");
 		}
 		for (int i = 0; i < count_static; i++)
 		{
-			ReplyToCommand(client, "%d: %.3f %d", attriblist[i], valuelist[i], view_as<int>(valuelist[i]));
+			ReplyToCommand(client, "- %3d: %6.2f %d", attriblist[i], valuelist[i], view_as<int>(valuelist[i]));
 		}
-		int iDefIndex = GetEntProp(wep, Prop_Send, "m_iItemDefinitionIndex");
+		int iDefIndex = GetEntProp(tgt, Prop_Send, "m_iItemDefinitionIndex");
 		count_static = TF2Attrib_GetStaticAttribs(iDefIndex, attriblist, valuelist);
 		if (count_static > 0)
 		{
@@ -585,7 +586,7 @@ public Action Command_GetAttrs(int client, int args)
 		}
 		for (int i = 0; i < count_static; i++)
 		{
-			ReplyToCommand(client, "%d: %.3f %d", attriblist[i], valuelist[i], view_as<int>(valuelist[i]));
+			ReplyToCommand(client, "- %3d: %6.2f %d", attriblist[i], valuelist[i], view_as<int>(valuelist[i]));
 		}
 	}
 	return Plugin_Handled;
