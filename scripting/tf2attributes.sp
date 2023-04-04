@@ -298,7 +298,7 @@ public void OnPluginStart() {
 	StartPrepSDKCall(SDKCall_Raw); // CEconItemAttribute*
 	PrepSDKCall_SetFromConf(hGameConf, SDKConf_Virtual,
 			"ISchemaAttributeTypeBase::InitializeNewEconAttributeValue");
-	PrepSDKCall_AddParameter(SDKType_PlainOldData, SDKPass_Plain); // CAttributeDefinition*
+	PrepSDKCall_AddParameter(SDKType_PlainOldData, SDKPass_Pointer, .encflags = VENCODE_FLAG_COPYBACK); // CAttributeDefinition*
 	hSDKAttributeValueInitialize = EndPrepSDKCall();
 	if (!hSDKAttributeValueInitialize) {
 		SetFailState("Could not initialize call to ISchemaAttributeTypeBase::InitializeNewEconAttributeValue");
@@ -319,7 +319,7 @@ public void OnPluginStart() {
 	PrepSDKCall_SetReturnInfo(SDKType_Bool, SDKPass_Plain);
 	PrepSDKCall_AddParameter(SDKType_PlainOldData, SDKPass_Plain);
 	PrepSDKCall_AddParameter(SDKType_String, SDKPass_Pointer);
-	PrepSDKCall_AddParameter(SDKType_PlainOldData, SDKPass_Plain);
+	PrepSDKCall_AddParameter(SDKType_PlainOldData, SDKPass_Pointer, .encflags = VENCODE_FLAG_COPYBACK);
 	PrepSDKCall_AddParameter(SDKType_Bool, SDKPass_Plain);
 	hSDKAttributeValueFromString = EndPrepSDKCall();
 	if (!hSDKAttributeValueFromString) {
@@ -597,12 +597,9 @@ public int Native_SetAttribStringByName(Handle plugin, int numParams) {
 	}
 	
 	// allocate a CEconItemAttribute instance in an entity's runtime attribute list
-	Address pEconItemAttribute = FindOrAllocateEconItemAttribute(entity, attrdef);
-	if (!InitializeAttributeValue(attrdef, pEconItemAttribute, strAttribVal)) {
+	if (!InitializeAttributeValue(pEntAttributeList, attrdef, strAttribVal)) {
 		return false;
 	}
-	
-	ClearAttributeCache(entity);
 	return true;
 }
 
@@ -1034,75 +1031,60 @@ static Address GetEntityAttributeManager(int entity) {
 }
 
 /**
- * Returns the address of a CEconItemAttribute instance on an entity with the given attribute
- * definition index, allocating it if one doesn't already exist.  For networked attributes this
- * is zero-initialized; heap-based attributes are considered uninitialized.
- */
-static Address FindOrAllocateEconItemAttribute(int entity, int attrdef) {
-	Address pAttrDef = GetAttributeDefinitionByID(attrdef);
-	if (!pAttrDef) {
-		return Address_Null;
-	}
-	
-	Address pAttributeList = GetEntityAttributeList(entity);
-	if (!pAttributeList) {
-		// we checked this before, but just in case refactors happen...
-		return Address_Null;
-	}
-	
-	Address pEconItemAttribute = SDKCall(hSDKGetAttributeByID, pAttributeList, attrdef);
-	if (!pEconItemAttribute) {
-		SDKCall(hSDKSetRuntimeValue, pAttributeList, pAttrDef, 0.0);
-		pEconItemAttribute = SDKCall(hSDKGetAttributeByID, pAttributeList, attrdef);
-	}
-	return pEconItemAttribute;
-}
-
-/**
  * Initializes the space occupied by a given CEconItemAttribute pointer, parsing and allocating
  * the raw value based on the attribute's underlying type.  This should correctly parse numeric
  * and string values.
  */
-static bool InitializeAttributeValue(int attrdef, Address pEconItemAttribute, const char[] value) {
+static bool InitializeAttributeValue(Address pAttributeList, int attrdef, const char[] value) {
 	Address pAttrDef = GetAttributeDefinitionByID(attrdef);
 	if (!pAttrDef) {
 		return false;
 	}
 	
 	Address pDefType = DereferencePointer(pAttrDef + view_as<Address>(0x08));
-	Address pAttributeValue = pEconItemAttribute + view_as<Address>(0x08);
+
+	bool networked = IsNetworkedRuntimeAttribute(pDefType);
 	
-	if (!IsNetworkedRuntimeAttribute(pDefType)) {
+	if (!networked) {
 		// reusing any existing matching attribute value strings
 		Address rawAttributeValue = GetHeapManagedAttributeString(attrdef, value);
 		if (rawAttributeValue) {
-			StoreToAddress(pAttributeValue, view_as<any>(rawAttributeValue), NumberType_Int32);
+			SDKCall(hSDKSetRuntimeValue, pAttributeList, pAttrDef, view_as<float>(rawAttributeValue));
 			return true;
 		}
-		
-		/**
-		 * initialize raw value; any existing values present in the CEconItemAttribute* are trashed
-		 * 
-		 * that is okay -- tf2attributes is the only one managing heap-allocated values, and
-		 * it holds its own reference to the value for freeing later
-		 * 
-		 * we don't attempt to free any existing attribute value mid-game as we don't know if
-		 * the value is present in multiple places (no refcounts!)
-		 */
-		SDKCall(hSDKAttributeValueInitialize, pDefType, pAttributeValue);
-		
+	}
+	
+	// since attribute value is a union of 32 bit types, this is okay
+	int attributeValue = 0;
+
+	/**
+	 * initialize raw value; any existing values present in the CEconItemAttribute* are trashed
+	 * 
+	 * that is okay -- tf2attributes is the only one managing heap-allocated values, and
+	 * it holds its own reference to the value for freeing later
+	 * 
+	 * we don't attempt to free any existing attribute value mid-game as we don't know if
+	 * the value is present in multiple places (no refcounts!)
+	 */
+	SDKCall(hSDKAttributeValueInitialize, pDefType, attributeValue);
+
+	if (!SDKCall(hSDKAttributeValueFromString, pDefType, pAttrDef, value, attributeValue, true)) {
+		// in case AttributeValueInitialize created a pointer, unload it
+		UnloadAttributeRawValue(pAttrDef, view_as<Address>(attributeValue));
+		// we couldn't parse the attribute value, abort
+		return false;
+	}
+	
+	SDKCall(hSDKSetRuntimeValue, pAttributeList, pAttrDef, view_as<float>(attributeValue));
+
+	if (!networked) {
 		// add to our managed values
 		// this definitely works for heap, not sure if it works for inline
 		HeapAttributeValue attribute;
 		attribute.m_iAttributeDefinitionIndex = attrdef;
-		attribute.m_pAttributeValue = DereferencePointer(pAttributeValue);
+		attribute.m_pAttributeValue = view_as<Address>(attributeValue);
 		
 		g_ManagedAllocatedValues.PushArray(attribute);
-	}
-	
-	if (!SDKCall(hSDKAttributeValueFromString, pDefType, pAttrDef, value, pAttributeValue, true)) {
-		// we couldn't parse the attribute value, abort
-		return false;
 	}
 	return true;
 }
