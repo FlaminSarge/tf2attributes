@@ -64,7 +64,7 @@
 			"CEconItemSchema::GetAttributeDefinition"	//(int), returns CEconItemAttributeDefinition*
 			{
 				"library"			"server"
-				"windows"			"\x55\x8B\xEC\x83\xEC\x2A\x53\x56\x8B\xD9\x8D\x2A\x2A\x57"
+				"windows"			"\x55\x8B\xEC\x56\x8B\xF1\x8D\x45\x08\x50\x8D\x8E\xBC\x01\x00\x00"
 				"linux"				"@_ZN15CEconItemSchema22GetAttributeDefinitionEi"
 				"mac"				"@_ZN15CEconItemSchema22GetAttributeDefinitionEi"
 			}
