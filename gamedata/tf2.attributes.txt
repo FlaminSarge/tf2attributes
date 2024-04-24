@@ -138,7 +138,7 @@
 			{
 				// called with x-ref string "hidden maxhealth non buffed"
 				"library"			"server"
-				"windows"			"\x55\x8B\xEC\x83\xEC\x10\x53\x56\x57\xFF\x75\x08"
+				"windows"			"\x55\x8B\xEC\x83\xEC\x08\x53\x56\x57\xFF\x75\x08\x8B\xD9"
 				"linux"				"@_ZN9CTFPlayer21RemoveCustomAttributeEPKc"
 				"mac"				"@_ZN9CTFPlayer21RemoveCustomAttributeEPKc"
 			}
