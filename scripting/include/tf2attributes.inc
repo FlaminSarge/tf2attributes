@@ -28,7 +28,7 @@ native bool TF2Attrib_SetByName(int iEntity, const char[] strAttrib, float flVal
 native bool TF2Attrib_SetByDefIndex(int iEntity, int iDefIndex, float flValue);
 
 /**
- * Parses the attribute name and value strings and applies it on the entity.  This parses
+ * Parses the attribute name and value strings and applies it on the entity. This parses
  * numeric and string attributes.
  * 
  * If you use this on a non-numeric attribute, make sure that only the server reads off of that
@@ -298,6 +298,51 @@ native int TF2Attrib_HookValueInt(int nInitial, const char[] attrClass, int iEnt
  * @return					Number of bytes written.
  */
 native int TF2Attrib_HookValueString(const char[] initial, const char[] attrClass, int iEntity, char[] buffer, int maxlen);
+
+/**
+ * Sets an attribute's value on a CEconItemView object (m_Item), adding it if it isn't on the item object.
+ * You should NOT be using this if you have access to the weapon entity itself, as this native is dangerous!
+ *
+ * @param pItem			The address to a CEconItemView object. Must have m_AttributeList.
+ * @param strAttrib		Name of the attribute, as from the "name" key in items_game.
+ * @param flValue		Value to set the attribute to
+ *
+ * @return				True if the attribute was added successfully, false if entity does not have m_AttributeList.
+ * @error				NULL address provided.
+ */
+native bool TF2Attrib_ItemSetByName(Address pItem, const char[] strAttrib, float flValue);
+
+/**
+ * Sets an attribute's value on a CEconItemView object (m_Item), adding it if it isn't on the item object.
+ * You should NOT be using this if you have access to the weapon entity itself, as this native is dangerous!
+ *
+ * @param pItem			The address to a CEconItemView object. Must have m_AttributeList.
+ * @param iDefIndex		Definition index of the attribute, as from the number on the attribute entry in items_game.
+ * @param flValue		Value to set the attribute to
+ *
+ * @return				True if the attribute was added successfully, false if entity does not have m_AttributeList.
+ * @error				NULL address provided.
+ */
+native bool TF2Attrib_ItemSetByDefIndex(Address pItem, int iDefIndex, float flValue);
+
+/**
+ * Parses the attribute name and value strings and applies it on the CEconItemView object (m_Item). 
+ * This parses numeric and string attributes.
+ * 
+ * If you use this on a non-numeric attribute, make sure that only the server reads off of that
+ * attribute.  Non-primitive values aren't replicated correctly between the client and the
+ * server; the client will read garbage and may crash!
+ *
+ * You should NOT be using this if you have access to the weapon entity itself, as this native is dangerous!
+ * 
+ * @param pItem			The address to a CEconItemView object. Must have m_AttributeList.
+ * @param strAttrib		Name of the attribute, as from the "name" key in items_game.
+ * @param strValue		Value to set the attribute to.
+ * 
+ * @return				True if the attribute was added successfully, false if the attribute name was invalid.
+ * @error				NULL address provided.
+ */
+native bool TF2Attrib_ItemSetFromStringValue(Address pItem, const char[] strAttrib, const char[] strValue);
 
 /**
  * Gets whether the plugin loaded without ANY errors.
