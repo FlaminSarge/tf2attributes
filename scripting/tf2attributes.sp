@@ -81,8 +81,11 @@ public APLRes AskPluginLoad2(Handle myself, bool late, char[] error, int err_max
 	}
 	
 	CreateNative("TF2Attrib_SetByName", Native_SetAttrib);
+	CreateNative("TF2Attrib_ItemSetByName", Native_SetItemAttrib);
 	CreateNative("TF2Attrib_SetByDefIndex", Native_SetAttribByID);
+	CreateNative("TF2Attrib_ItemSetByDefIndex", Native_SetItemAttribByID);
 	CreateNative("TF2Attrib_SetFromStringValue", Native_SetAttribStringByName);
+	CreateNative("TF2Attrib_ItemSetFromStringValue", Native_SetItemAttribStringByName);
 	CreateNative("TF2Attrib_GetByName", Native_GetAttrib);
 	CreateNative("TF2Attrib_GetByDefIndex", Native_GetAttribByID);
 	CreateNative("TF2Attrib_RemoveByName", Native_Remove);
@@ -550,6 +553,31 @@ public int Native_SetAttrib(Handle plugin, int numParams) {
 	return true;
 }
 
+/* native bool TF2Attrib_ItemSetByName(Address pItem, char[] strAttrib, float flValue); */
+public int Native_SetItemAttrib(Handle plugin, int numParams) {
+	Address pItem = GetNativeCell(1);
+	if (pItem == Address_Null) {
+		return ThrowNativeError(SP_ERROR_NATIVE, "Address 0x%X (%d) is NULL", pItem);
+	}
+	
+	char strAttrib[MAX_ATTRIBUTE_NAME_LENGTH];
+	GetNativeString(2, strAttrib, sizeof(strAttrib));
+	float flVal = GetNativeCell(3);
+	
+	Address pEntAttributeList = GetEconItemViewAttributeList(pItem);
+	if (!pEntAttributeList) {
+		return ThrowNativeError(SP_ERROR_NATIVE, "Address 0x%X does not have property m_AttributeList", pItem);
+	}
+	
+	Address pAttribDef = GetAttributeDefinitionByName(strAttrib);
+	if (!pAttribDef) {
+		return ThrowNativeError(SP_ERROR_NATIVE, "Attribute name '%s' is invalid", strAttrib);
+	}
+	
+	SDKCall(hSDKSetRuntimeValue, pEntAttributeList, pAttribDef, flVal);
+	return true;
+}
+
 /* native bool TF2Attrib_SetByDefIndex(int iEntity, int iDefIndex, float flValue); */
 public int Native_SetAttribByID(Handle plugin, int numParams) {
 	int entity = GetNativeCell(1);
@@ -561,10 +589,26 @@ public int Native_SetAttribByID(Handle plugin, int numParams) {
 	float flVal = GetNativeCell(3);
 	
 	Address pEntAttributeList = GetEntityAttributeList(entity);
-	if (!pEntAttributeList) {
-		return ThrowNativeError(SP_ERROR_NATIVE, "Entity %d (%d) does not have property m_AttributeList", EntIndexToEntRef(entity), entity);
+	Address pAttribDef = GetAttributeDefinitionByID(iAttrib);
+	if (!pAttribDef) {
+		return ThrowNativeError(SP_ERROR_NATIVE, "Attribute index %d is invalid", iAttrib);
 	}
 	
+	SDKCall(hSDKSetRuntimeValue, pEntAttributeList, pAttribDef, flVal);
+	return true;
+}
+
+/* native bool TF2Attrib_ItemSetByDefIndex(Address pItem, int iDefIndex, float flValue); */
+public int Native_SetItemAttribByID(Handle plugin, int numParams) {
+	Address pItem = GetNativeCell(1);
+	if (pItem == Address_Null) {
+		return ThrowNativeError(SP_ERROR_NATIVE, "Address 0x%X (%d) is NULL", pItem);
+	}
+	
+	int iAttrib = GetNativeCell(2);
+	float flVal = GetNativeCell(3);
+	
+	Address pEntAttributeList = GetEconItemViewAttributeList(pItem);
 	Address pAttribDef = GetAttributeDefinitionByID(iAttrib);
 	if (!pAttribDef) {
 		return ThrowNativeError(SP_ERROR_NATIVE, "Attribute index %d is invalid", iAttrib);
@@ -586,6 +630,32 @@ public int Native_SetAttribStringByName(Handle plugin, int numParams) {
 		return ThrowNativeError(SP_ERROR_NATIVE, "Entity %d (%d) does not have property m_AttributeList", EntIndexToEntRef(entity), entity);
 	}
 	
+	char strAttrib[MAX_ATTRIBUTE_NAME_LENGTH], strAttribVal[MAX_ATTRIBUTE_VALUE_LENGTH];
+	GetNativeString(2, strAttrib, sizeof(strAttrib));
+	GetNativeString(3, strAttribVal, sizeof(strAttribVal));
+	
+	int attrdef;
+	if (!GetAttributeDefIndexByName(strAttrib, attrdef)) {
+		// we don't throw on nonexistent attributes here; we return false and let the caller handle that
+		return false;
+	}
+	
+	// allocate a CEconItemAttribute instance in an entity's runtime attribute list
+	if (!InitializeAttributeValue(pEntAttributeList, attrdef, strAttribVal)) {
+		return false;
+	}
+	return true;
+}
+
+/* native bool TF2Attrib_SetFromStringValue(Address pItem, const char[] strAttrib, const char[] strValue); */
+public int Native_SetItemAttribStringByName(Handle plugin, int numParams) {
+	Address pItem = GetNativeCell(1);
+	if (pItem == Address_Null) {
+		return ThrowNativeError(SP_ERROR_NATIVE, "Address 0x%X (%d) is NULL", pItem);
+	}
+	
+	Address pEntAttributeList = GetEconItemViewAttributeList(pItem);
+
 	char strAttrib[MAX_ATTRIBUTE_NAME_LENGTH], strAttribVal[MAX_ATTRIBUTE_VALUE_LENGTH];
 	GetNativeString(2, strAttrib, sizeof(strAttrib));
 	GetNativeString(3, strAttribVal, sizeof(strAttribVal));
@@ -963,7 +1033,9 @@ static Address GetItemSchema() {
 }
 
 static Address GetEntityEconItemView(int entity) {
-	int iCEIVOffset = GetEntSendPropOffs(entity, "m_Item", true);
+	static int iCEIVOffset = 0;
+	if (!iCEIVOffset)
+		iCEIVOffset = GetEntSendPropOffs(entity, "m_Item", true);
 	if (iCEIVOffset > 0) {
 		return GetEntityAddress(entity) + view_as<Address>(iCEIVOffset);
 	}
@@ -975,9 +1047,24 @@ static Address GetEntityEconItemView(int entity) {
  * (which is offset by 0x04).
  */
 static Address GetEntityAttributeList(int entity) {
-	int offsAttributeList = GetEntSendPropOffs(entity, "m_AttributeList", true);
+	static int offsAttributeList = 0;
+	if (!offsAttributeList)
+		offsAttributeList = GetEntSendPropOffs(entity, "m_AttributeList", true);
 	if (offsAttributeList > 0) {
 		return GetEntityAddress(entity) + view_as<Address>(offsAttributeList);
+	}
+	return Address_Null;
+}
+
+/**
+ * Same as above, but on a weapon's m_Item (CEconItemView).
+ */
+static Address GetEconItemViewAttributeList(Address m_Item) {
+	int offsAttributeList = 0;
+	if (!offsAttributeList)
+		offsAttributeList = FindSendPropInfo("CEconEntity", "m_AttributeList") - FindSendPropInfo("CEconEntity", "m_Item");
+	if (m_Item != Address_Null) {
+		return m_Item + view_as<Address>(offsAttributeList);
 	}
 	return Address_Null;
 }
