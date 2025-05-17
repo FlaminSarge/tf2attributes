@@ -128,6 +128,12 @@ public void OnPluginStart() {
 		SetFailState("Could not locate gamedata file tf2.attributes.txt for TF2Attributes, pausing plugin");
 	}
 	
+	char pluginFailMessage[256];
+	if (GameConfGetKeyValue(hGameConf, "PluginFailMessage", pluginFailMessage,
+			sizeof(pluginFailMessage))) {
+		SetFailState(pluginFailMessage);
+	}
+	
 	StartPrepSDKCall(SDKCall_Raw);
 	PrepSDKCall_SetFromConf(hGameConf, SDKConf_Signature, "CEconItemSchema::GetItemDefinition");
 	PrepSDKCall_AddParameter(SDKType_PlainOldData, SDKPass_Plain);
