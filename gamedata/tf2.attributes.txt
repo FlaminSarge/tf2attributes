@@ -152,5 +152,16 @@
 				"mac"				"@_Z43CopyStringAttributeValueToCharPointerOutputPK17CAttribute_StringPPKc"
 			}
 		}
+		"Keys"
+		{
+			// user-facing error messages so we stop getting badgered about "Could not initialize call to CEconItemSchema::GetItemDefinition"
+			"PluginFailMessage"
+			{
+				"windows64"			"This plugin is currently not supported on 64-bit servers.  See https://github.com/FlaminSarge/tf2attributes/issues/50 and make sure you are NOT launching the server with srcds_win64 / tf_win64."
+				"linux64"			"This plugin is currently not supported on 64-bit servers.  See https://github.com/FlaminSarge/tf2attributes/issues/50 and make sure you are NOT launching the server with srcds_run_64."
+				"mac"				"This plugin is no longer supported on Mac."
+				"mac64"				"This plugin is no longer supported on Mac.  Especially not on the nonexistent 64-bit version of SRCDS."
+			}
+		}
 	}
 }
