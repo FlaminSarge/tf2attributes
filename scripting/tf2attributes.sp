@@ -130,7 +130,7 @@ public void OnPluginStart() {
 	
 	char pluginFailMessage[256];
 	if (GameConfGetKeyValue(hGameConf, "PluginFailMessage", pluginFailMessage,
-			sizeof(pluginFailMessage))) {
+			sizeof(pluginFailMessage)) && pluginFailMessage[0]) {
 		SetFailState(pluginFailMessage);
 	}
 	
