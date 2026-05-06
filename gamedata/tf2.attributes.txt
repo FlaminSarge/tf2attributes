@@ -8,34 +8,53 @@
 			"CAttributeManager::OnAttributeValuesChanged"
 			{
 				"windows"	"13"
+				"windows64"	"13"
 				"linux"		"14"
+				"linux64"	"14"
 				"mac"		"14"
 			}
 			"CAttributeManager::ApplyAttributeStringWrapper"
 			{
 				// linux uses a signature
 				"windows"	"15"
+				"windows64"	"15"
 			}
 			"ISchemaAttributeTypeBase::BConvertStringToEconAttributeValue"
 			{
 				"windows"	"4"
+				"windows64"	"4"
 				"linux"		"5"
+				"linux64"	"5"
 			}
 			"ISchemaAttributeTypeBase::InitializeNewEconAttributeValue"
 			{
 				"windows"	"7"
+				"windows64"	"7"
 				"linux"		"8"
+				"linux64"	"8"
 			}
 			"ISchemaAttributeTypeBase::UnloadEconAttributeValue"
 			{
 				"windows"	"8"
+				"windows64"	"8"
 				"linux"		"9"
+				"linux64"	"9"
 			}
 			"ISchemaAttributeTypeBase::BSupportsGame..."
 			{
 				// "ISchemaAttributeTypeBase::BSupportsGameplayModificationAndNetworking()"
 				"windows"	"10"
+				"windows64"	"10"
 				"linux"		"11"
+				"linux64"	"11"
+			}
+			"OS"
+			{
+				"windows"	"1"
+				"windows64"	"2"
+				"linux"		"3"
+				"linux64"	"4"
+				"mac"		"5"
 			}
 		}
 		"Signatures"
@@ -44,63 +63,81 @@
 			{
 				"library"			"server"
 				"windows"			"\x55\x8B\xEC\x56\x8B\xF1\x8D\x45\x08\x50\x8D\x8E\x2A\x2A\x2A\x2A\xE8\x2A\x2A\x2A\x2A\x85\xC0"
+				"windows64"			"\x89\x54\x24\x10\x53\x48\x83\xEC\x20\x48\x8B\xD9\x48\x8D\x54\x24\x38\x48\x81\xC1\x00\x01\x00\x00"
 				"linux"				"@_ZN15CEconItemSchema17GetItemDefinitionEi"
+				"linux64"			"@_ZN15CEconItemSchema17GetItemDefinitionEi"
 				"mac"				"@_ZN15CEconItemSchema17GetItemDefinitionEi"
 			}
 			"CEconItemView::GetSOCData"	//(), returns CEconItem*
 			{
 				"library"			"server"
 				"windows"			"\x56\x8B\xF1\x8B\x46\x2A\x85\xC0\x75\x2A\xE8\x2A\x2A\x2A\x2A\xFF\x76\x20\x8B\xC8\x8B\x10\xFF\x52\x44\x85\xC0\x74\x2A\xFF\x76\x14\x8B\xC8\xFF\x76\x10\xE8\x2A\x2A\x2A\x2A\x5E"
+				"windows64"			"\x40\x53\x48\x83\xEC\x20\x48\x8B\x41\x38\x48\x8B\xD9\x48\x85\xC0\x75\x2A\xE8\x2A\x2A\x2A\x2A\x8B\x53\x28\x48\x8B\xC8\x4C\x8B\x00\x41\xFF\x90\x88\x00\x00\x00\x48\x85\xC0\x74\x2A\x48\x8B\x53\x18\x48\x8B\xC8\x48\x83\xC4\x20"
 				"linux"				"@_ZNK13CEconItemView10GetSOCDataEv"
+				"linux64"			"@_ZNK13CEconItemView10GetSOCDataEv"
 				"mac"				"@_ZNK13CEconItemView10GetSOCDataEv"
 			}
 			"GEconItemSchema"	//static?
 			{
 				"library"			"server"
 				"windows"			"\xE8\x2A\x2A\x2A\x2A\x83\xC0\x04\xC3"
+				"windows64"			"\x48\x83\xEC\x28\xE8\x2A\x2A\x2A\x2A\x48\x83\xC0\x08"
 				"linux"				"@_Z15GEconItemSchemav"
+				"linux64"			"@_Z15GEconItemSchemav"
 				"mac"				"@_Z15GEconItemSchemav"
 			}
 			"CEconItemSchema::GetAttributeDefinition"	//(int), returns CEconItemAttributeDefinition*
 			{
 				"library"			"server"
 				"windows"			"\x55\x8B\xEC\x56\x8B\xF1\x8D\x45\x08\x50\x8D\x8E\xBC\x01\x00\x00"
+				"windows64"			"\x89\x54\x24\x10\x53\x48\x83\xEC\x20\x48\x8B\xD9\x48\x8D\x54\x24\x38\x48\x81\xC1\x50\x02\x00\x00"
 				"linux"				"@_ZN15CEconItemSchema22GetAttributeDefinitionEi"
+				"linux64"			"@_ZN15CEconItemSchema22GetAttributeDefinitionEi"
 				"mac"				"@_ZN15CEconItemSchema22GetAttributeDefinitionEi"
 			}
 			"CEconItemSchema::GetAttributeDefinitionByName"	//(const char*), returns CEconItemAttributeDefinition*
 			{
 				"library"			"server"
 				"windows"			"\x55\x8B\xEC\x83\xEC\x1C\x83\x7D\x08\x00"
+				"windows64"			"\x40\x55\x56\x48\x83\xEC\x78"
 				"linux"				"@_ZN15CEconItemSchema28GetAttributeDefinitionByNameEPKc"
+				"linux64"			"@_ZN15CEconItemSchema28GetAttributeDefinitionByNameEPKc"
 				"mac"				"@_ZN15CEconItemSchema28GetAttributeDefinitionByNameEPKc"
 			}
 			"CAttributeList::RemoveAttribute" //(CEconItemAttributeDefinition*), returns CEconItemAttributeDefinition*
 			{
 				"library"			"server"
 				"windows"			"\x55\x8B\xEC\x51\x53\x8B\xD9\x56\x33\xF6\x8B\x43\x10\x89\x45\xFC\x85\xC0\x7E\x2A\x57\x33\xFF"
+				"windows64"			"\x48\x89\x74\x24\x20\x41\x54\x41\x56\x41\x57\x48\x83\xEC\x20"
 				"linux"				"@_ZN14CAttributeList15RemoveAttributeEPK28CEconItemAttributeDefinition"
+				"linux64"			"@_ZN14CAttributeList15RemoveAttributeEPK28CEconItemAttributeDefinition"
 				"mac"				"@_ZN14CAttributeList15RemoveAttributeEPK28CEconItemAttributeDefinition"
 			}
 			"CAttributeList::SetRuntimeAttributeValue" //(CEconItemAttributeDefinition*, float), returns void
 			{
 				"library"			"server"
 				"windows"			"\x55\x8B\xEC\x83\xEC\x2A\x33\x2A\x53\x8B\xD9\x56\x57\x8B\x2A\x2A\x8B\x2A\x2A"
+				"windows64"			"\x48\x89\x5C\x24\x2A\x55\x56\x57\x48\x8B\xEC\x48\x83\xEC\x2A\x44\x8B\x49"
 				"linux"				"@_ZN14CAttributeList24SetRuntimeAttributeValueEPK28CEconItemAttributeDefinitionf"
+				"linux64"			"@_ZN14CAttributeList24SetRuntimeAttributeValueEPK28CEconItemAttributeDefinitionf"
 				"mac"				"@_ZN14CAttributeList24SetRuntimeAttributeValueEPK28CEconItemAttributeDefinitionf"
 			}
 			"CAttributeList::GetAttributeByID" //(int), returns CEconAttribute*
 			{
 				"library"			"server"
 				"windows"			"\x55\x8B\xEC\x51\x8B\xC1\x53\x56\x33\xF6\x89\x45\xFC\x8B\x58\x10"
+				"windows64"			"\x48\x89\x5C\x24\x08\x48\x89\x6C\x24\x10\x48\x89\x74\x24\x18\x48\x89\x7C\x24\x20\x41\x54\x41\x56\x41\x57\x48\x83\xEC\x20\x4C\x63\x71\x18"
 				"linux"				"@_ZNK14CAttributeList16GetAttributeByIDEi"
+				"linux64"			"@_ZNK14CAttributeList16GetAttributeByIDEi"
 				"mac"				"@_ZNK14CAttributeList16GetAttributeByIDEi"
 			}
 			"CAttributeList::DestroyAllAttributes" //(), returns int
 			{
 				"library"			"server"
 				"windows"			"\x56\x8B\xF1\x83\x7E\x10\x00\x74\x2A\x83\x7E\x0C\x00"
+				"windows64"			"\x40\x53\x48\x83\xEC\x20\x83\x79\x18\x00"
 				"linux"				"@_ZN14CAttributeList20DestroyAllAttributesEv"
+				"linux64"			"@_ZN14CAttributeList20DestroyAllAttributesEv"
 				"mac"				"@_ZN14CAttributeList20DestroyAllAttributesEv"
 			}
 			"CAttributeManager::AttribHookValue<float>"
@@ -109,7 +146,9 @@
 				// called in unique x-ref to "ubercharge_ammo" on Windows
 				"library"			"server"
 				"linux"				"@_ZN17CAttributeManager15AttribHookValueIfEET_S1_PKcPK11CBaseEntityP10CUtlVectorIPS4_10CUtlMemoryIS8_iEEb"
+				"linux64"			"@_ZN17CAttributeManager15AttribHookValueIfEET_S1_PKcPK11CBaseEntityP10CUtlVectorIPS4_10CUtlMemoryIS8_iEEb"
 				"windows"			"\x55\x8B\xEC\x83\xEC\x18\x8B\x0D\x2A\x2A\x2A\x2A\x53\x56\x57\x33\xFF\x33\xDB\x89\x7D\xE8\x89\x5D\xEC\x8B\x41\x08\x85\xC0\x74\x2A\x68\x2A\x2A\x2A\x2A\x68\x2A\x2A\x2A\x2A\x68\x2A\x2A\x2A\x2A\x68\x2A\x2A\x2A\x2A\x6A\x6B\x68\x2A\x2A\x2A\x2A\x53\x53\x53\x53\x8D\x4D\xE8\x51\x50\x8B\x40\x50\xFF\xD0\x8B\x5D\xEC\x83\xC4\x30\x8B\x7D\xE8\x8B\x0D\x2A\x2A\x2A\x2A\x8B\x71\x08\x8B\x0D\x2A\x2A\x2A\x2A\x89\x75\xFC\x8B\x81\x0C\x10\x00\x00\x89\x45\xF8\x85\xC0\x74\x2A\x6A\x04\x6A\x00\x68\x2A\x2A\x2A\x2A\x6A\x00\x68\x2A\x2A\x2A\x2A\xFF\x15\x2A\x2A\x2A\x2A\x8B\x0D\x2A\x2A\x2A\x2A\x8B\x45\x0C\x85\xC0\x74\x2A\x80\x38\x00\x74\x2A\x8B\x55\x10\x85\xD2\x74\x2A\x8B\x92\xE4\x00\x00\x00\x89\x55\x0C\x85\xD2\x74\x2A\x80\x7D\x18\x00\x50\x74\x2A\x8D\x45\xF4\x50\xE8\x2A\x2A\x2A\x2A\xEB\x2A\x8D\x45\xF0\x50\xE8\x2A\x2A\x2A\x2A\x8B\x4D\x0C\x83\xC4\x08\x8B\x30\x8B\x01\xFF\x10\xFF\x75\x14\xD9\x45\x08"
+				"windows64"			"\x4C\x8B\xDC\x49\x89\x5B\x08\x49\x89\x6B\x18\x56\x57\x41\x54\x41\x56\x41\x57\x48\x81\xEC\x80\x00\x00\x00\x48\x8B\x3D\x2A\x2A\x2A\x00"
 			}
 			"CAttributeManager::AttribHookValue<int>"
 			{
@@ -117,7 +156,9 @@
 				// called in unique x-ref to "mod_max_primary_clip_override" on Windows
 				"library"			"server"
 				"linux"				"@_ZN17CAttributeManager15AttribHookValueIiEET_S1_PKcPK11CBaseEntityP10CUtlVectorIPS4_10CUtlMemoryIS8_iEEb"
+				"linux64"			"@_ZN17CAttributeManager15AttribHookValueIiEET_S1_PKcPK11CBaseEntityP10CUtlVectorIPS4_10CUtlMemoryIS8_iEEb"
 				"windows"			"\x55\x8B\xEC\x83\xEC\x18\x8B\x0D\x2A\x2A\x2A\x2A\x53\x56\x57\x33\xFF\x33\xDB\x89\x7D\xE8\x89\x5D\xEC\x8B\x41\x08\x85\xC0\x74\x2A\x68\x2A\x2A\x2A\x2A\x68\x2A\x2A\x2A\x2A\x68\x2A\x2A\x2A\x2A\x68\x2A\x2A\x2A\x2A\x6A\x6B\x68\x2A\x2A\x2A\x2A\x53\x53\x53\x53\x8D\x4D\xE8\x51\x50\x8B\x40\x50\xFF\xD0\x8B\x5D\xEC\x83\xC4\x30\x8B\x7D\xE8\x8B\x0D\x2A\x2A\x2A\x2A\x8B\x71\x08\x8B\x0D\x2A\x2A\x2A\x2A\x89\x75\xFC\x8B\x81\x0C\x10\x00\x00\x89\x45\xF8\x85\xC0\x74\x2A\x6A\x04\x6A\x00\x68\x2A\x2A\x2A\x2A\x6A\x00\x68\x2A\x2A\x2A\x2A\xFF\x15\x2A\x2A\x2A\x2A\x8B\x0D\x2A\x2A\x2A\x2A\x8B\x45\x0C\x85\xC0\x74\x2A\x80\x38\x00\x74\x2A\x8B\x55\x10\x85\xD2\x74\x2A\x8B\x92\xE4\x00\x00\x00\x89\x55\x0C\x85\xD2\x74\x2A\x80\x7D\x18\x00\x50\x74\x2A\x8D\x45\xF4\x50\xE8\x2A\x2A\x2A\x2A\xEB\x2A\x8D\x45\xF0\x50\xE8\x2A\x2A\x2A\x2A\x8B\x4D\x0C\x83\xC4\x08\x8B\x30\x8B\x01\xFF\x10\xFF\x75\x14\xF3\x0F\x2A\x45\x08"
+				"windows64"			"\x4C\x8B\xDC\x49\x89\x5B\x08\x49\x89\x6B\x18\x49\x89\x73\x20\x57\x41\x54\x41\x55\x41\x56\x41\x57\x48\x83\xEC\x70"
 			}
 			"CAttributeManager::ApplyAttributeStringWrapper"
 			{
@@ -126,12 +167,15 @@
 				// windows uses a (mostly) standard calling convention so we use the vtable call for that
 				"library"			"server"
 				"linux"				"@_ZN17CAttributeManager27ApplyAttributeStringWrapperE8string_tP11CBaseEntityS0_P10CUtlVectorIS2_10CUtlMemoryIS2_iEE"
+				"linux64"			"@_ZN17CAttributeManager27ApplyAttributeStringWrapperE8string_tP11CBaseEntityS0_P10CUtlVectorIS2_10CUtlMemoryIS2_iEE"
 			}
 			"CTFPlayer::AddCustomAttribute" //(const char*, float, float), returns void
 			{
 				"library"			"server"
 				"windows"			"\x55\x8B\xEC\xF3\x0F\x10\x45\x10\x83\xEC\x10"
+				"windows64"			"\x48\x89\x5C\x24\x2A\x55\x56\x57\x48\x83\xEC\x2A\x0F\x29\x74\x24\x2A\x0F\x57\xC0"
 				"linux"				"@_ZN9CTFPlayer18AddCustomAttributeEPKcff"
+				"linux64"			"@_ZN9CTFPlayer18AddCustomAttributeEPKcff"
 				"mac"				"@_ZN9CTFPlayer18AddCustomAttributeEPKcff"
 			}
 			"CTFPlayer::RemoveCustomAttribute" //(const char*), returns void
@@ -139,7 +183,9 @@
 				// called with x-ref string "hidden maxhealth non buffed"
 				"library"			"server"
 				"windows"			"\x55\x8B\xEC\x83\xEC\x08\x53\x56\x57\xFF\x75\x08\x8B\xD9"
+				"windows64"			"\x48\x89\x5C\x24\x10\x48\x89\x6C\x24\x18\x48\x89\x74\x24\x20\x57\x48\x83\xEC\x20\x48\x8B\xF9"
 				"linux"				"@_ZN9CTFPlayer21RemoveCustomAttributeEPKc"
+				"linux64"			"@_ZN9CTFPlayer21RemoveCustomAttributeEPKc"
 				"mac"				"@_ZN9CTFPlayer21RemoveCustomAttributeEPKc"
 			}
 			"CopyStringAttributeValueToCharPointerOutput" //(CAttribute_String*, char**), returns void
@@ -148,7 +194,9 @@
 				// which on Windows has a unique bytesig `55 8B EC 56 8B F1 8B 46 04 3B 45 08 75 ? FF 76 08`
 				"library"			"server"
 				"windows"			"\x55\x8B\xEC\x8B\x45\x08\x8B\x48\x10"
+				"windows64"			"\x48\x8B\x41\x18\x48\x83\x78\x18\x0F"
 				"linux"				"@_Z43CopyStringAttributeValueToCharPointerOutputPK17CAttribute_StringPPKc"
+				"linux64"			"@_Z43CopyStringAttributeValueToCharPointerOutputPK17CAttribute_StringPPKc"
 				"mac"				"@_Z43CopyStringAttributeValueToCharPointerOutputPK17CAttribute_StringPPKc"
 			}
 		}
@@ -158,9 +206,9 @@
 			"PluginFailMessage"
 			{
 				"windows"			""
-				"windows64"			"This plugin is currently not supported on 64-bit servers.  See https://github.com/FlaminSarge/tf2attributes/issues/50 and make sure you are NOT launching the server with srcds_win64 / tf_win64."
+				"windows64"			""
 				"linux"				""
-				"linux64"			"This plugin is currently not supported on 64-bit servers.  See https://github.com/FlaminSarge/tf2attributes/issues/50 and make sure you are NOT launching the server with srcds_run_64."
+				"linux64"			""
 				"mac"				"This plugin is no longer supported on Mac."
 				"mac64"				"This plugin is no longer supported on Mac.  Especially not on the nonexistent 64-bit version of SRCDS."
 			}

@@ -10,7 +10,7 @@ jobs:
     - name: Setup SourcePawn Compiler
       uses: rumblefrog/setup-sp@master
       with:
-        version: '1.11.x'
+        version: '1.13.x'
     - name: Compile tf2attributes
       run: spcomp scripting/tf2attributes.sp
     - name: Compile example

@@ -104,7 +104,7 @@ native bool TF2Attrib_RemoveAll(int iEntity);
  * You may also need to call this on the entity's m_hOwnerEntity if it is a weapon or wearable.
  * You do NOT need to call this after calls to TF2Attrib_SetByName, TF2Attrib_Remove, and TF2Attrib_RemoveAll.
  *
- * @param iEntity		Entity index to remove attribute from. Must have m_AttributeList.
+ * @param iEntity		Entity index to clear attribute cache on. Must have m_AttributeList.
  *
  * @return				True if the SDKCall was made, false if entity had invalid address or m_AttributeList missing.
  * @error				Invalid entity index passed.
@@ -198,29 +198,41 @@ native int TF2Attrib_ListDefIndices(int iEntity, int[] iDefIndices, int iMaxLen=
 
 /**
  * Returns arrays containing the static attributes and their values present on an item definition.
+ * Non-networked attribute values are pending for 64-bit SourceMod.
  *
  * @param iItemDefIndex		Item definition index (e.g. 7 for Shovel) to get static attribute list from.
  * @param iAttribIndices	Array of attribute definition indices found on the item definition.
  * @param flAttribValues	Array of attribute values found on the item definition, corresponding to the indices.
  * @param iMaxLen			Max length of the two arrays passed in, default 16. Does not affect the return value.
  *
- * @return					The number of attributes found on the item definition's static attribute list (max 16 as of June 2017), or -1 if no schema or item definition found.
+ * @return					The number of attributes found on the item definition's static attribute list (max 13 as of Apr 2026), or -1 if no schema or item definition found.
  * @error					Invalid iMaxLen, or gamedata for this function failed to load.
  */
 native int TF2Attrib_GetStaticAttribs(int iItemDefIndex, int[] iAttribIndices, float[] flAttribValues, int iMaxLen=16);
 
 /**
- * Returns arrays containing the item server (SOC) attributes and their values present on an item definition.
+ * Returns arrays containing the item server (SOC) attributes and their values present on an entity's item.
+ * Non-networked attribute values are pending for 64-bit SourceMod.
  *
  * @param iEntity			Entity index to get the item server attribute list from.
  * @param iAttribIndices	Array of attribute definition indices found.
  * @param flAttribValues	Array of attribute values found, corresponding to the indices.
- * @param iMaxLen			Max length of the two arrays passed in, default 16. Does not affect the return value.
+ * @param iMaxLen			Max length of the arrays passed in, default 16. Does not affect the return value.
  *
  * @return					The number of attributes found on the item's SOC attribute list (max 16 as of June 2017), or -1 if some error happened.
  * @error					Invalid iEntity or iMaxLen, or gamedata for this function failed to load.
  */
 native int TF2Attrib_GetSOCAttribs(int iEntity, int[] iAttribIndices, float[] flAttribValues, int iMaxLen=16);
+
+/**
+ * Gets whether an attribute's value is stored as a networked float/int, or as a non-networked blob pointer.
+ * Non-networked types include strings, uint64, and protobuf-based attribute types.
+ *
+ * @param iDefIndex		Definition index of the attribute.
+ *
+ * @return				True if the attribute is a networked float/int, false if it is a blob type.
+ */
+native bool TF2Attrib_IsNetworked(int iDefIndex);
 
 /**
  * Gets whether an attribute is stored as an integer or as a float.
@@ -339,13 +351,16 @@ public void __pl_tf2attributes_SetNTVOptional()
 	MarkNativeAsOptional("TF2Attrib_ListDefIndices");
 	MarkNativeAsOptional("TF2Attrib_GetStaticAttribs");
 	MarkNativeAsOptional("TF2Attrib_GetSOCAttribs");
-	MarkNativeAsOptional("TF2Attrib_ListDefIndices");
+	MarkNativeAsOptional("TF2Attrib_IsNetworked");
 	MarkNativeAsOptional("TF2Attrib_IsIntegerValue");
 	MarkNativeAsOptional("TF2Attrib_IsValidAttributeName");
 	MarkNativeAsOptional("TF2Attrib_AddCustomPlayerAttribute");
 	MarkNativeAsOptional("TF2Attrib_RemoveCustomPlayerAttribute");
+	MarkNativeAsOptional("TF2Attrib_SetFromStringValue");
+	MarkNativeAsOptional("TF2Attrib_UnsafeGetStringValue");
 	MarkNativeAsOptional("TF2Attrib_HookValueFloat");
 	MarkNativeAsOptional("TF2Attrib_HookValueInt");
+	MarkNativeAsOptional("TF2Attrib_HookValueString");
 	MarkNativeAsOptional("TF2Attrib_IsReady");
 }
 #endif
