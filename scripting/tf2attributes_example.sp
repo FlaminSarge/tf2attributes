@@ -449,7 +449,7 @@ public Action Command_GetAttrByName(int client, int args)
 
 	Address pAttrib = (bydefidx ? TF2Attrib_GetByDefIndex(tgt, StringToInt(arg2)) : TF2Attrib_GetByName(tgt, arg2));
 	lastAddr[client] = pAttrib;
-	if (!IsValidAddress(view_as<Address>(pAttrib)))
+	if (!IsValidAddress(pAttrib))
 	{
 		ReplyToCommand(client, "[SM] GetAttrib got null attrib '%s' on %s%d", arg2, tgt == target ? "" : "active wep of ", target);//, target);
 		return Plugin_Handled;
@@ -459,7 +459,7 @@ public Action Command_GetAttrByName(int client, int args)
 	if (TF2Attrib_IsIntegerValue(idx)) result = float(view_as<int>(result));
 	float init;// = TF2Attrib_GetInitialValue(pAttrib);
 	if (TF2Attrib_IsIntegerValue(idx)) init = float(view_as<int>(init));
-	ReplyToCommand(client, "[SM] GetAttrib got: %08X %d ; %6.2f, %6.2f, %d, %d for attrib '%s' on %s%d", view_as<int>(pAttrib), idx, result, init, TF2Attrib_GetRefundableCurrency(pAttrib), 0 /*TF2Attrib_GetIsSetBonus(pAttrib)*/, arg2, tgt == target ? "" : "active wep of ", target);//, target);
+	ReplyToCommand(client, "[SM] GetAttrib got: 0x%lX %d ; %6.2f, %6.2f, %d, %d for attrib '%s' on %s%d", pAttrib, idx, result, init, TF2Attrib_GetRefundableCurrency(pAttrib), 0 /*TF2Attrib_GetIsSetBonus(pAttrib)*/, arg2, tgt == target ? "" : "active wep of ", target);//, target);
 	return Plugin_Handled;
 }
 public Action Command_GetAttrByID(int client, int args)
@@ -499,7 +499,7 @@ public Action Command_GetAttrByID(int client, int args)
 
 	Address pAttrib = TF2Attrib_GetByDefIndex(tgt, index);
 	lastAddr[client] = pAttrib;
-	if (!IsValidAddress(view_as<Address>(pAttrib)))
+	if (!IsValidAddress(pAttrib))
 	{
 		ReplyToCommand(client, "[SM] GetAttrib got null attrib '%d' on %s%d", index, tgt == target ? "" : "active wep of ", target);//, target);
 		return Plugin_Handled;
@@ -509,7 +509,7 @@ public Action Command_GetAttrByID(int client, int args)
 	if (TF2Attrib_IsIntegerValue(idx)) result = float(view_as<int>(result));
 	float init;// = TF2Attrib_GetInitialValue(pAttrib);
 	if (TF2Attrib_IsIntegerValue(idx)) init = float(view_as<int>(init));
-	ReplyToCommand(client, "[SM] GetAttrib got: %08X %d ; %6.2f, %6.2f, %d, %d for attrib '%s' on %s%d", view_as<int>(pAttrib), idx, result, init, TF2Attrib_GetRefundableCurrency(pAttrib), 0 /*TF2Attrib_GetIsSetBonus(pAttrib)*/, arg2, tgt == target ? "" : "active wep of ", target);//, target);
+	ReplyToCommand(client, "[SM] GetAttrib got: 0x%lX %d ; %6.2f, %6.2f, %d, %d for attrib '%s' on %s%d", pAttrib, idx, result, init, TF2Attrib_GetRefundableCurrency(pAttrib), 0 /*TF2Attrib_GetIsSetBonus(pAttrib)*/, arg2, tgt == target ? "" : "active wep of ", target);//, target);
 	return Plugin_Handled;
 }
 public Action Command_GetAttrs(int client, int args)
@@ -619,7 +619,7 @@ public Action SetValueStuff(int client, int args)
 		case 3: TF2Attrib_SetRefundableCurrency(addr, StringToInt(arg3));
 //		case 5: TF2Attrib_SetIsSetBonus(addr, !!StringToInt(arg3));
 	}
-	ReplyToCommand(client, "[SM] Set %d on %d to %s", type, addr, arg3);
+	ReplyToCommand(client, "[SM] Set %d on 0x%lX to %s", type, addr, arg3);
 	return Plugin_Handled;
 }
 stock bool IsValidClient(int client)
@@ -627,18 +627,7 @@ stock bool IsValidClient(int client)
 	if (client <= 0 || client > MaxClients) return false;
 	return IsClientInGame(client);
 }
-//TODO Stop using Address_MinimumValid once verified that logic still works without it
 stock bool IsValidAddress(Address pAddress)
 {
-	static Address Address_MinimumValid = view_as<Address>(0x10000);
-	if (pAddress == Address_Null)
-		return false;
-	return unsigned_compare(view_as<int>(pAddress), view_as<int>(Address_MinimumValid)) >= 0;
-}
-stock int unsigned_compare(int a, int b) {
-	if (a == b)
-		return 0;
-	if ((a >>> 31) == (b >>> 31))
-		return ((a & 0x7FFFFFFF) > (b & 0x7FFFFFFF)) ? 1 : -1;
-	return ((a >>> 31) > (b >>> 31)) ? 1 : -1;
+	return pAddress != Address_Null;
 }

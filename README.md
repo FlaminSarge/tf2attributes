@@ -35,6 +35,17 @@ Setting custom names / descriptions is not possible.  String values that are set
 are not replicated to the client &mdash; this is fine for attributes that are only accessed on
 the server, but if you set any that the client will read, the client will crash on access.
 
+## 64-bit servers
+
+This plugin runs on both 32-bit and 64-bit servers, but a few behaviors differ on 64-bit:
+
+- `TF2Attrib_SetFromStringValue` throws a native error for non-numeric (string) attributes.
+  - Numeric attributes still work on both architectures.
+- `TF2Attrib_GetStaticAttribs` and `TF2Attrib_GetSOCAttribs` return `0.0` for non-networked values.
+- `TF2Attrib_UnsafeGetStringValue` throws a native error.
+  - There is no way to obtain a valid raw string pointer on 64-bit.
+  - Use `TF2Attrib_HookValueString` to read a string attribute's value instead.
+
 ## Installing or updating to 1.7
 
 All plugins compiled for previous versions should continue to work with this one.

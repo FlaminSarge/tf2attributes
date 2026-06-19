@@ -1,9 +1,8 @@
 #pragma semicolon 1
+#pragma newdecls required
 
 #include <sourcemod>
 #include <sdktools>
-
-#pragma newdecls required
 
 #define PLUGIN_NAME		"[TF2] TF2Attributes"
 #define PLUGIN_AUTHOR		"FlaminSarge"
@@ -23,6 +22,16 @@ public Plugin myinfo = {
 #define MAX_ATTRIBUTE_NAME_LENGTH 128
 #define MAX_ATTRIBUTE_VALUE_LENGTH PLATFORM_MAX_PATH
 
+enum OS {
+	OS_Unknown = 0,
+	OS_Windows,
+	OS_Windows64,
+	OS_Linux,
+	OS_Linux64,
+	OS_Mac,
+}
+OS g_OS;
+
 Handle hSDKGetItemDefinition;
 Handle hSDKGetSOCData;
 Handle hSDKSchema;
@@ -39,13 +48,14 @@ Handle hSDKAttributeHookFloat;
 Handle hSDKAttributeHookInt;
 
 // these two are mutually exclusive
-Handle hSDKAttributeApplyStringWrapperWindows;
-Handle hSDKAttributeApplyStringWrapperLinux;
+Handle hSDKAttributeApplyStringWrapperVtable;
+Handle hSDKAttributeApplyStringWrapperSig;
 
 Handle hSDKAttributeValueInitialize;
+Handle hSDKAttributeValueInitialize_Virtual;
 Handle hSDKAttributeTypeCanBeNetworked;
 Handle hSDKAttributeValueFromString;
-Handle hSDKAttributeValueUnload;
+Handle hSDKAttributeValueFromString_Virtual;
 Handle hSDKAttributeValueUnloadByRef;
 Handle hSDKCopyStringAttributeToCharPointer;
 
@@ -54,6 +64,228 @@ StringMap g_AttributeDefinitionMapping;
 
 // caches string_t instances from AllocPooledString
 StringMap g_AllocPooledStringCache;
+
+IntMap g_imapAttrIsNetworked;
+
+/** Address Offsets **/
+enum struct CUtlVector {
+	Address m_size; // int
+
+	void Init() {
+		// this.m_memory = view_as<Address>(0); // CUtlMemory<T> {T* m_pMemory, int m_nAllocationCount, int m_nGrowSize}
+		this.m_size = Address_PointerSize + view_as<Address>(4 + 4); // 12/16
+		// this.m_pElements = this.m_size + Address_PointerSize; // 16/24(+ 4 padding) T*
+	}
+}
+CUtlVector g_CUtlVector;
+
+enum struct CAttributeList {
+	Address m_Attributes; // CUtlVector<CEconItemAttribute>
+	Address m_Attributes_m_Size; // int
+	Address m_pManager; // CAttributeManager*
+
+	void Init() {
+		// vfptr = 0; // offset 0
+		this.m_Attributes = Address_PointerSize; // +PS (vfptr): CUtlVector<CEconItemAttribute>
+
+		this.m_Attributes_m_Size = this.m_Attributes + Address_PointerSize + 8; // +sizeof(CUtlMemory): m_pMemory(PS) + m_nAllocationCount(4) + m_nGrowSize(4)
+		this.m_pManager = this.m_Attributes + 3 * Address_PointerSize + 8; // +sizeof(CUtlVector): sizeof(CUtlMemory) + m_Size(4) + pad(PS-4) + m_pElements(PS)
+	}
+}
+CAttributeList g_CAttributeList;
+
+enum struct CEconItemAttribute {
+	Address m_iAttributeDefinitionIndex; // attrib_definition_index_t (u16)
+	Address m_flValue; // float
+	Address m_nRefundableCurrency; // int
+	int iSizeOf;
+
+	void Init() {
+		// vfptr = 0; // offset 0
+		this.m_iAttributeDefinitionIndex = Address_PointerSize; // +PS (vfptr): attrib_definition_index_t (u16)
+
+		this.m_flValue = this.m_iAttributeDefinitionIndex + 4; // +m_iAttributeDefinitionIndex(2) + pad(2)
+		this.m_nRefundableCurrency = this.m_flValue + 4; // +m_flValue(4)
+		this.iSizeOf = view_as<int>(2 * Address_PointerSize + 8); // sizeof: vfptr(PS) + u16(2) + pad(2) + float(4) + int(4) + tail_pad(PS-4)
+	}
+}
+CEconItemAttribute g_CEconItemAttribute;
+
+enum struct CEconItemAttributeDefinition {
+	Address m_nDefIndex;
+	Address m_pAttrType;
+	Address m_bStoredAsInteger;
+
+	void Init() {
+		// this.m_pKVAttribute = view_as<Address>(0); // offset 0 (ptr)
+		this.m_nDefIndex = Address_PointerSize; // +PS (m_pKVAttribute): u16
+
+		this.m_pAttrType = this.m_nDefIndex + Address_PointerSize; // +m_nDefIndex(2) + pad(PS-2)
+		// this.m_bHidden = this.m_pAttrType + Address_PointerSize;
+		// this.m_bWebSchemaOutputForced = this.m_bHidden + 1;
+		this.m_bStoredAsInteger = this.m_pAttrType + Address_PointerSize + 2; // +m_pAttrType(PS) + m_bHidden(1) + m_bWebSchemaOutputForced(1)
+		// this.m_bInstanceData = this.m_bStoredAsInteger + 1;
+		// this.m_eAssetClassAttrExportRule = this.m_bInstanceData + 1;
+		// this.m_unAssetClassBucket = this.m_eAssetClassAttrExportRule + 4; // +m_eAssetClassAttrExportRule(4)
+		// this.m_bIsSetBonus = this.m_unAssetClassBucket + 4;
+		// this.m_iUserGenerationType = this.m_bIsSetBonus + 4;
+		// this.m_iEffectType = this.m_iUserGenerationType + 4;
+		// this.m_iDescriptionFormat = this.m_iEffectType + 4;
+		// this.m_pszDescriptionString = this.m_iDescriptionFormat + Address_PointerSize; // +m_iDescriptionFormat(4) + pad(PS-4)
+		// this.m_pszArmoryDesc = this.m_pszDescriptionString + Address_PointerSize;
+		// this.m_pszDefinitionName = this.m_pszArmoryDesc + Address_PointerSize;
+		// this.m_pszAttributeClass = this.m_pszDefinitionName + Address_PointerSize;
+		// this.m_bCanAffectMarketName = this.m_pszAttributeClass + Address_PointerSize;
+		// this.m_bCanAffectRecipeComponentName = this.m_bCanAffectMarketName + 1;
+		// this.m_ItemDefinitionTag = this.m_bCanAffectRecipeComponentName + 3; // +m_bCanAffectRecipeComponentName(1) + pad(2)
+		// this.m_iszAttributeClass = this.m_ItemDefinitionTag + 4; // +m_ItemDefinitionTag(int CRC32)
+		// this.iSizeOf = this.m_iszAttributeClass + Address_PointerSize; // +m_iszAttributeClass(4) + pad(PS-4)
+	}
+}
+CEconItemAttributeDefinition g_CEconItemAttributeDefinition;
+
+enum struct CEconItem
+{
+	Address m_dirtyBits; // dirty_bits_t {u8 m_bInUse : 1, u8 m_bHasEquipSingleton : 1, u8 m_bHasAttribSingleton: 1}
+	Address m_CustomAttribSingleton_m_unDefinitionIndex; // attribute_t + 0
+	Address m_CustomAttribSingleton_m_flValue; // attribute_t + 4
+	Address m_pCustomData; // CEconItemCustomData* {CUtlVector< CEconItem::attribute_t > m_vecAttributes, CEconItem* m_pInteriorItem, uint64 m_ulOriginalID, uint16 m_unQuantity}
+
+	void Init() {
+		// GCSDK::CSharedObject {vfptr} = 0
+		// IEconItemInterface {vfptr} = Address_PointerSize;
+		// this.m_pszSmallIcon = 2 * Address_PointerSize;
+		// this.m_pszLargeIcon = this.m_pszSmallIcon + Address_PointerSize;
+		// this.m_ulID = this.m_pszLargeIcon + Address_PointerSize; // u64
+
+		// this.m_unAccountID = this.m_ulID + 8; // +m_ulID(u64)
+		// this.m_unInventory = this.m_unAccountID + 4;
+		// this.m_unDefIndex = this.m_unInventory + 4;
+		// this.m_unLevel = this.m_unDefIndex + 2; // +m_unDefIndex(u16)
+		// this.m_nQuality = this.m_unLevel + 1;
+		// this.m_unFlags = this.m_nQuality + 1;
+		// this.m_unOrigin = this.m_unFlags + 1;
+		// this.m_unStyle = this.m_unOrigin + 1;
+		this.m_dirtyBits = 4 * Address_PointerSize + 23; // 2 vfptrs + 2 icon ptrs + m_ulID(8) + 2 u32s + u16 + 5 u8s
+		// this.m_EquipInstanceSingleton_m_unDefinitionIndex = this.m_dirtyBits + 1;
+		this.m_CustomAttribSingleton_m_unDefinitionIndex = this.m_dirtyBits + 1 + Address_PointerSize; // +m_dirtyBits(1) + EquippedInstance_t(4) + pad(PS-4)
+		this.m_CustomAttribSingleton_m_flValue = this.m_CustomAttribSingleton_m_unDefinitionIndex + Address_PointerSize; // +m_unDefinitionIndex(2) + pad(PS-2)
+		this.m_pCustomData = this.m_CustomAttribSingleton_m_flValue + Address_PointerSize; // +attribute_data_union_t(PS)
+	}
+}
+CEconItem g_CEconItem;
+
+enum struct CEconItemDefinition {
+	Address m_vecStaticAttributes; // CUtlVector<static_attrib_t>
+	Address m_vecStaticAttributes_m_Size; // int
+
+	void Init() {
+		// vfptr = 0; // offset 0
+		// this.m_pKVItem = Address_PointerSize;
+		// this.m_nDefIndex = this.m_pKVItem + Address_PointerSize; // +m_pKVItem(PS): u16
+
+		// this.m_nRemappedDefIndex = this.m_nDefIndex + 2; // +m_nDefIndex(2): u16
+		// this.m_pszRemappedDefItemName = this.m_nRemappedDefIndex + Address_PointerSize - 2; // +m_nRemappedDefIndex(2) + pad(PS-4)
+		// this.m_bEnabled = this.m_pszRemappedDefItemName + Address_PointerSize;
+		// this.m_unMinItemLevel = this.m_bEnabled + 1;
+		// this.m_unMaxItemLevel = this.m_unMinItemLevel + 1;
+		// this.m_nItemQuality = this.m_unMaxItemLevel + 1;
+		// this.m_nForcedItemQuality = this.m_nItemQuality + 1;
+		// this.m_nItemRarity = this.m_nForcedItemQuality + 1;
+		// this.m_nDefaultDropQuantity = this.m_nItemRarity + 1;
+		// this.m_unItemSeries = this.m_nDefaultDropQuantity + 2; // +m_nDefaultDropQuantity(1) + pad(1)
+		this.m_vecStaticAttributes = 5 * Address_PointerSize + 8; // 2 pointers + 2 u16s + pad(PS-4) + pointer + 7 u8s + pad(1) + u16 + pad(PS-2): CUtlVector<static_attrib_t>
+		this.m_vecStaticAttributes_m_Size = this.m_vecStaticAttributes + Address_PointerSize + 8; // +sizeof(CUtlMemory): m_pMemory(PS) + m_nAllocationCount(4) + m_nGrowSize(4) -> 0x28 (x86) / 0x40 (x64)
+		// this.m_nPopularitySeed = this.m_vecStaticAttributes_m_Size + 2 * Address_PointerSize; // +m_Size(4) + pad(PS-4) + m_pElements(PS)
+		// this.m_pszItemBaseName = this.m_nPopularitySeed + Address_PointerSize; // +m_nPopularitySeed(4) + pad(PS-4)
+		// this.m_bProperName = this.m_pszItemBaseName + Address_PointerSize;
+		// this.m_pszItemTypeName = this.m_bProperName + Address_PointerSize; // +m_bProperName(1) + pad(PS-1)
+		// this.m_pszItemDesc = this.m_pszItemTypeName + Address_PointerSize;
+		// this.m_rtExpiration = this.m_pszItemDesc + Address_PointerSize;
+		// this.m_pszInventoryModel = this.m_rtExpiration + Address_PointerSize; // +m_rtExpiration(4) + pad(PS-4)
+		// this.m_pszInventoryImage = this.m_pszInventoryModel + Address_PointerSize;
+		// this.m_pszInventoryOverlayImages = this.m_pszInventoryImage + Address_PointerSize; // CUtlVector<const char*>
+		// this.m_iInventoryImagePosition = this.m_pszInventoryOverlayImages + 3 * Address_PointerSize + 8; // +sizeof(CUtlVector)
+		// this.m_iInventoryImageSize = this.m_iInventoryImagePosition + 8; // +m_iInventoryImagePosition(8)
+		// this.m_iInspectPanelDistance = this.m_iInventoryImageSize + 8; // +m_iInventoryImageSize(8)
+		// this.m_pszBaseDisplayModel = this.m_iInspectPanelDistance + Address_PointerSize; // +m_iInspectPanelDistance(4) + pad(PS-4)
+		// this.m_iDefaultSkin = this.m_pszBaseDisplayModel + Address_PointerSize;
+		// this.m_bLoadOnDemand = this.m_iDefaultSkin + 4; // +m_iDefaultSkin(4)
+		// this.m_bHasBeenLoaded = this.m_bLoadOnDemand + 1;
+		// this.m_bHideBodyGroupsDeployedOnly = this.m_bHasBeenLoaded + 1;
+		// this.m_pszWorldDisplayModel = this.m_bHideBodyGroupsDeployedOnly + 2; // +m_bHideBodyGroupsDeployedOnly(1) + pad(1)
+		// this.m_pszWorldExtraWearableModel = this.m_pszWorldDisplayModel + Address_PointerSize;
+		// this.m_pszWorldExtraWearableViewModel = this.m_pszWorldExtraWearableModel + Address_PointerSize;
+		// this.m_pszVisionFilteredDisplayModel = this.m_pszWorldExtraWearableViewModel + Address_PointerSize;
+		// this.m_pszCollectionReference = this.m_pszVisionFilteredDisplayModel + Address_PointerSize;
+		// this.m_bAttachToHands = this.m_pszCollectionReference + Address_PointerSize;
+		// this.m_bAttachToHandsVMOnly = this.m_bAttachToHands + 1;
+		// this.m_bFlipViewModel = this.m_bAttachToHandsVMOnly + 1;
+		// this.m_bActAsWearable = this.m_bFlipViewModel + 1;
+		// this.m_bActAsWeapon = this.m_bActAsWearable + 1;
+		// this.m_bIsTool = this.m_bActAsWeapon + 1;
+		// this.m_pItemSetDef = this.m_bIsTool + 3; // +m_bIsTool(1) + pad(2)
+		// this.m_pItemCollectionDef = this.m_pItemSetDef + Address_PointerSize;
+		// this.m_PerTeamVisuals = this.m_pItemCollectionDef + Address_PointerSize;
+		// this.m_pszBrassModelOverride = this.m_PerTeamVisuals + 5 * Address_PointerSize; // +m_PerTeamVisuals(5*PS)
+		// this.m_pTool = this.m_pszBrassModelOverride + Address_PointerSize;
+		// this.m_BundleInfo = this.m_pTool + Address_PointerSize;
+		// this.m_iCapabilities = this.m_BundleInfo + Address_PointerSize;
+		// this.m_pDictIcons = this.m_iCapabilities + Address_PointerSize; // +m_iCapabilities(4) + pad(PS-4)
+		// this.m_pszItemClassname = this.m_pDictIcons + Address_PointerSize;
+		// this.m_pszItemLogClassname = this.m_pszItemClassname + Address_PointerSize;
+		// this.m_pszItemIconClassname = this.m_pszItemLogClassname + Address_PointerSize;
+		// this.m_pszDefinitionName = this.m_pszItemIconClassname + Address_PointerSize;
+		// this.m_pszDatabaseAuditTable = this.m_pszDefinitionName + Address_PointerSize;
+		// this.m_bHidden = this.m_pszDatabaseAuditTable + Address_PointerSize;
+		// this.m_bShouldShowInArmory = this.m_bHidden + 1;
+		// this.m_bBaseItem = this.m_bShouldShowInArmory + 1;
+		// this.m_bImported = this.m_bBaseItem + 1;
+		// this.m_bIsPackBundle = this.m_bImported + 1;
+		// this.m_pOwningPackBundle = this.m_bIsPackBundle + 4; // +m_bIsPackBundle(1) + pad(3)
+		// this.m_bIsPackItem = this.m_pOwningPackBundle + Address_PointerSize;
+		// this.m_pszArmoryDesc = this.m_bIsPackItem + Address_PointerSize; // +m_bIsPackItem(1) + pad(PS-1)
+		// this.m_pszXifierRemapClass = this.m_pszArmoryDesc + Address_PointerSize;
+		// this.m_pszBaseFunctionalItemName = this.m_pszXifierRemapClass + Address_PointerSize;
+		// this.m_pszParticleSuffix = this.m_pszBaseFunctionalItemName + Address_PointerSize;
+		// this.m_iArmoryRemap = this.m_pszParticleSuffix + Address_PointerSize;
+		// this.m_iStoreRemap = this.m_iArmoryRemap + 4;
+		// this.m_pszArmoryRemap = this.m_iStoreRemap + 4;
+		// this.m_pszStoreRemap = this.m_pszArmoryRemap + Address_PointerSize;
+		// this.m_pszClassToken = this.m_pszStoreRemap + Address_PointerSize;
+		// this.m_pszSlotToken = this.m_pszClassToken + Address_PointerSize;
+		// this.m_iDropType = this.m_pszSlotToken + Address_PointerSize;
+		// this.m_pszHolidayRestriction = this.m_iDropType + Address_PointerSize; // +m_iDropType(4) + pad(PS-4)
+		// this.m_nVisionFilterFlags = this.m_pszHolidayRestriction + Address_PointerSize;
+		// this.m_iSubType = this.m_nVisionFilterFlags + 4; // +m_nVisionFilterFlags(4)
+		// this.m_bAllowedInThisMatch = this.m_iSubType + 4;
+		// this.m_unEquipRegionMask = this.m_bAllowedInThisMatch + 4; // +m_bAllowedInThisMatch(1) + pad(3)
+		// this.m_unEquipRegionConflictMask = this.m_unEquipRegionMask + 4;
+		// this.m_unSetItemRemapDefIndex = this.m_unEquipRegionConflictMask + 4;
+		// this.m_jobs = this.m_unSetItemRemapDefIndex + 4; // +m_unSetItemRemapDefIndex(2) + pad(2): CUtlVector<job_def_t>
+		// this.m_bValidForShuffle = this.m_jobs + 3 * Address_PointerSize + 8; // +sizeof(CUtlVector)
+		// this.m_bValidForSelfMade = this.m_bValidForShuffle + 1;
+		// this.m_vecTags = this.m_bValidForSelfMade + Address_PointerSize - 1; // +m_bValidForSelfMade(1) + pad(PS-2)
+		// this.m_vecContainingBundleItemDefs = this.m_vecTags + 3 * Address_PointerSize + 8; // +sizeof(CUtlVector)
+		// this.m_vecSteamWorkshopContributors = this.m_vecContainingBundleItemDefs + 3 * Address_PointerSize + 8; // +sizeof(CUtlVector)
+	}
+}
+CEconItemDefinition g_CEconItemDefinition;
+
+enum struct static_attrib_t {
+	Address iDefIndex; // attrib_definition_index_t (u16)
+	Address m_value; // union attribute_data_union_t {float asFloat; uint32 asUint32; byte *asBlobPointer;}
+	int iSizeOf;
+
+	void Init() {
+		this.iDefIndex = view_as<Address>(0);
+		this.m_value = Address_PointerSize; // alignment
+		this.iSizeOf = view_as<int>(2 * Address_PointerSize); // sizeof: iDefIndex(2) + pad(PS-2) + m_value(PS)
+	}
+}
+static_attrib_t g_static_attrib_t;
+/** End Address Offsets **/
+
 
 /**
  * since the game doesn't free heap-allocated non-GC attributes, we're taking on that
@@ -99,6 +331,7 @@ public APLRes AskPluginLoad2(Handle myself, bool late, char[] error, int err_max
 	CreateNative("TF2Attrib_ListDefIndices", Native_ListIDs);
 	CreateNative("TF2Attrib_GetStaticAttribs", Native_GetStaticAttribs);
 	CreateNative("TF2Attrib_GetSOCAttribs", Native_GetSOCAttribs);
+	CreateNative("TF2Attrib_IsNetworked", Native_IsNetworked);
 	CreateNative("TF2Attrib_IsIntegerValue", Native_IsIntegerValue);
 	CreateNative("TF2Attrib_IsValidAttributeName", Native_IsValidAttributeName);
 	CreateNative("TF2Attrib_AddCustomPlayerAttribute", Native_AddCustomAttribute);
@@ -123,21 +356,27 @@ public int Native_IsReady(Handle plugin, int numParams) {
 }
 
 public void OnPluginStart() {
-	Handle hGameConf = LoadGameConfigFile("tf2.attributes");
+	GameData hGameConf = new GameData("tf2.attributes");
 	if (!hGameConf) {
 		SetFailState("Could not locate gamedata file tf2.attributes.txt for TF2Attributes, pausing plugin");
 	}
 
 	char pluginFailMessage[256];
-	if (GameConfGetKeyValue(hGameConf, "PluginFailMessage", pluginFailMessage,
+	if (hGameConf.GetKeyValue("PluginFailMessage", pluginFailMessage,
 			sizeof(pluginFailMessage)) && pluginFailMessage[0]) {
 		SetFailState(pluginFailMessage);
 	}
 
+	g_OS = view_as<OS>(hGameConf.GetOffset("OS"));
+
+	if (g_OS <= OS_Unknown) {
+		SetFailState("Missing \"OS\" gamedata offset");
+	}
+
 	StartPrepSDKCall(SDKCall_Raw);
 	PrepSDKCall_SetFromConf(hGameConf, SDKConf_Signature, "CEconItemSchema::GetItemDefinition");
-	PrepSDKCall_AddParameter(SDKType_PlainOldData, SDKPass_Plain);
-	PrepSDKCall_SetReturnInfo(SDKType_PlainOldData, SDKPass_Plain);	//Returns address of CEconItemDefinition
+	PrepSDKCall_AddParameter(SDKType_PlainOldData, SDKPass_Plain);		//int iItemIndex
+	PrepSDKCall_SetReturnInfo(SDKType_Address, SDKPass_Plain);	//Returns address of CEconItemDefinition
 	hSDKGetItemDefinition = EndPrepSDKCall();
 	if (!hSDKGetItemDefinition) {
 		SetFailState("Could not initialize call to CEconItemSchema::GetItemDefinition");
@@ -145,7 +384,7 @@ public void OnPluginStart() {
 
 	StartPrepSDKCall(SDKCall_Raw);
 	PrepSDKCall_SetFromConf(hGameConf, SDKConf_Signature, "CEconItemView::GetSOCData");
-	PrepSDKCall_SetReturnInfo(SDKType_PlainOldData, SDKPass_Plain);	//Returns address of CEconItem
+	PrepSDKCall_SetReturnInfo(SDKType_Address, SDKPass_Plain);	//Returns address of CEconItem
 	hSDKGetSOCData = EndPrepSDKCall();
 	if (!hSDKGetSOCData) {
 		SetFailState("Could not initialize call to CEconItemView::GetSOCData");
@@ -153,7 +392,7 @@ public void OnPluginStart() {
 
 	StartPrepSDKCall(SDKCall_Static);
 	PrepSDKCall_SetFromConf(hGameConf, SDKConf_Signature, "GEconItemSchema");
-	PrepSDKCall_SetReturnInfo(SDKType_PlainOldData, SDKPass_Plain);	//Returns address of CEconItemSchema
+	PrepSDKCall_SetReturnInfo(SDKType_Address, SDKPass_Plain);	//Returns address of CEconItemSchema
 	hSDKSchema = EndPrepSDKCall();
 	if (!hSDKSchema) {
 		SetFailState("Could not initialize call to GEconItemSchema");
@@ -161,8 +400,8 @@ public void OnPluginStart() {
 
 	StartPrepSDKCall(SDKCall_Raw);
 	PrepSDKCall_SetFromConf(hGameConf, SDKConf_Signature, "CEconItemSchema::GetAttributeDefinition");
-	PrepSDKCall_AddParameter(SDKType_PlainOldData, SDKPass_Plain);
-	PrepSDKCall_SetReturnInfo(SDKType_PlainOldData, SDKPass_Plain);	//Returns address of a CEconItemAttributeDefinition
+	PrepSDKCall_AddParameter(SDKType_PlainOldData, SDKPass_Plain);		//int iAttribIndex
+	PrepSDKCall_SetReturnInfo(SDKType_Address, SDKPass_Plain);	//Returns address of a CEconItemAttributeDefinition
 	hSDKGetAttributeDef = EndPrepSDKCall();
 	if (!hSDKGetAttributeDef) {
 		SetFailState("Could not initialize call to CEconItemSchema::GetAttributeDefinition");
@@ -170,8 +409,8 @@ public void OnPluginStart() {
 
 	StartPrepSDKCall(SDKCall_Raw);
 	PrepSDKCall_SetFromConf(hGameConf, SDKConf_Signature, "CEconItemSchema::GetAttributeDefinitionByName");
-	PrepSDKCall_AddParameter(SDKType_String, SDKPass_Pointer);
-	PrepSDKCall_SetReturnInfo(SDKType_PlainOldData, SDKPass_Plain);	//Returns address of a CEconItemAttributeDefinition
+	PrepSDKCall_AddParameter(SDKType_String, SDKPass_Pointer);			//const char *pszDefName
+	PrepSDKCall_SetReturnInfo(SDKType_Address, SDKPass_Plain);	//Returns address of a CEconItemAttributeDefinition
 	hSDKGetAttributeDefByName = EndPrepSDKCall();
 	if (!hSDKGetAttributeDefByName) {
 		SetFailState("Could not initialize call to CEconItemSchema::GetAttributeDefinitionByName");
@@ -179,8 +418,7 @@ public void OnPluginStart() {
 
 	StartPrepSDKCall(SDKCall_Raw);
 	PrepSDKCall_SetFromConf(hGameConf, SDKConf_Signature, "CAttributeList::RemoveAttribute");
-	PrepSDKCall_AddParameter(SDKType_PlainOldData, SDKPass_Plain);
-	PrepSDKCall_SetReturnInfo(SDKType_PlainOldData, SDKPass_Plain);	//not a clue what this return is
+	PrepSDKCall_AddParameter(SDKType_Address, SDKPass_Plain);	//const CEconItemAttributeDefinition *pAttrDef
 	hSDKRemoveAttribute = EndPrepSDKCall();
 	if (!hSDKRemoveAttribute) {
 		SetFailState("Could not initialize call to CAttributeList::RemoveAttribute");
@@ -188,9 +426,9 @@ public void OnPluginStart() {
 
 	StartPrepSDKCall(SDKCall_Raw);
 	PrepSDKCall_SetFromConf(hGameConf, SDKConf_Signature, "CAttributeList::SetRuntimeAttributeValue");
-	PrepSDKCall_AddParameter(SDKType_PlainOldData, SDKPass_Plain);
-	PrepSDKCall_AddParameter(SDKType_Float, SDKPass_Plain);
-	//PrepSDKCall_SetReturnInfo(SDKType_PlainOldData, SDKPass_Plain);
+	PrepSDKCall_AddParameter(SDKType_Address, SDKPass_Plain); //const CEconItemAttributeDefinition *pAttrDef
+	PrepSDKCall_AddParameter(SDKType_Float, SDKPass_Plain);			 //float flValue
+	//PrepSDKCall_SetReturnInfo(SDKType_Address, SDKPass_Plain);
 	//Apparently there's no return, so avoid setting return info, but the 'return' is nonzero if the attribute is added successfully
 	//Just a note, the above SDKCall returns ((entindex + 4) * 4) | 0xA000), and you can AND it with 0x1FFF to get back the entindex if you want, though it's pointless)
 	//I don't know any other specifics, such as if the highest 3 bits actually matter
@@ -203,7 +441,6 @@ public void OnPluginStart() {
 
 	StartPrepSDKCall(SDKCall_Raw);
 	PrepSDKCall_SetFromConf(hGameConf, SDKConf_Signature, "CAttributeList::DestroyAllAttributes");
-	PrepSDKCall_SetReturnInfo(SDKType_PlainOldData, SDKPass_Plain);
 	hSDKDestroyAllAttributes = EndPrepSDKCall();
 	if (!hSDKDestroyAllAttributes) {
 		SetFailState("Could not initialize call to CAttributeList::DestroyAllAttributes");
@@ -211,8 +448,8 @@ public void OnPluginStart() {
 
 	StartPrepSDKCall(SDKCall_Raw);
 	PrepSDKCall_SetFromConf(hGameConf, SDKConf_Signature, "CAttributeList::GetAttributeByID");
-	PrepSDKCall_AddParameter(SDKType_PlainOldData, SDKPass_Plain);
-	PrepSDKCall_SetReturnInfo(SDKType_PlainOldData, SDKPass_Plain);	//Returns address of a CEconItemAttribute
+	PrepSDKCall_AddParameter(SDKType_PlainOldData, SDKPass_Plain);		//int iAttributeID
+	PrepSDKCall_SetReturnInfo(SDKType_Address, SDKPass_Plain);	//Returns address of a CEconItemAttribute
 	hSDKGetAttributeByID = EndPrepSDKCall();
 	if (!hSDKGetAttributeByID) {
 		SetFailState("Could not initialize call to CAttributeList::GetAttributeByID");
@@ -227,9 +464,9 @@ public void OnPluginStart() {
 
 	StartPrepSDKCall(SDKCall_Player);
 	PrepSDKCall_SetFromConf(hGameConf, SDKConf_Signature, "CTFPlayer::AddCustomAttribute");
-	PrepSDKCall_AddParameter(SDKType_String, SDKPass_Pointer);
-	PrepSDKCall_AddParameter(SDKType_Float, SDKPass_Plain);
-	PrepSDKCall_AddParameter(SDKType_Float, SDKPass_Plain);
+	PrepSDKCall_AddParameter(SDKType_String, SDKPass_Pointer);	//const char *pszAttributeName
+	PrepSDKCall_AddParameter(SDKType_Float, SDKPass_Plain);		//float flValue
+	PrepSDKCall_AddParameter(SDKType_Float, SDKPass_Plain);		//float flDuration
 	hSDKAddCustomAttribute = EndPrepSDKCall();
 	if (!hSDKAddCustomAttribute) {
 		SetFailState("Could not initialize call to CTFPlayer::AddCustomAttribute");
@@ -237,7 +474,7 @@ public void OnPluginStart() {
 
 	StartPrepSDKCall(SDKCall_Player);
 	PrepSDKCall_SetFromConf(hGameConf, SDKConf_Signature, "CTFPlayer::RemoveCustomAttribute");
-	PrepSDKCall_AddParameter(SDKType_String, SDKPass_Pointer);
+	PrepSDKCall_AddParameter(SDKType_String, SDKPass_Pointer);	//const char *pszAttributeName
 	hSDKRemoveCustomAttribute = EndPrepSDKCall();
 	if (!hSDKRemoveCustomAttribute) {
 		SetFailState("Could not initialize call to CTFPlayer::RemoveCustomAttribute");
@@ -246,11 +483,20 @@ public void OnPluginStart() {
 	StartPrepSDKCall(SDKCall_Static);
 	PrepSDKCall_SetFromConf(hGameConf, SDKConf_Signature, "CAttributeManager::AttribHookValue<float>");
 	PrepSDKCall_SetReturnInfo(SDKType_Float, SDKPass_Plain);
-	PrepSDKCall_AddParameter(SDKType_Float, SDKPass_Plain); // initial value
-	PrepSDKCall_AddParameter(SDKType_String, SDKPass_Pointer); // attribute class
-	PrepSDKCall_AddParameter(SDKType_CBaseEntity, SDKPass_Pointer); // CBaseEntity* entity
-	PrepSDKCall_AddParameter(SDKType_PlainOldData, SDKPass_Plain); // CUtlVector<CBaseEntity*>, set to nullptr
-	PrepSDKCall_AddParameter(SDKType_Bool, SDKPass_Plain); // bool const_string
+	if (g_OS == OS_Linux64) {
+		// initial value is changed from being the first parameter to being the last
+		PrepSDKCall_AddParameter(SDKType_String, SDKPass_Pointer); // attribute class
+		PrepSDKCall_AddParameter(SDKType_CBaseEntity, SDKPass_Pointer); // CBaseEntity* entity
+		PrepSDKCall_AddParameter(SDKType_Address, SDKPass_Plain, VDECODE_FLAG_ALLOWNULL); // CUtlVector<CBaseEntity*>, set to nullptr
+		PrepSDKCall_AddParameter(SDKType_Bool, SDKPass_Plain); // bool const_string
+		PrepSDKCall_AddParameter(SDKType_Float, SDKPass_Plain); // initial value
+	} else {
+		PrepSDKCall_AddParameter(SDKType_Float, SDKPass_Plain); // initial value
+		PrepSDKCall_AddParameter(SDKType_String, SDKPass_Pointer); // attribute class
+		PrepSDKCall_AddParameter(SDKType_CBaseEntity, SDKPass_Pointer); // CBaseEntity* entity
+		PrepSDKCall_AddParameter(SDKType_Address, SDKPass_Plain, VDECODE_FLAG_ALLOWNULL); // CUtlVector<CBaseEntity*>, set to nullptr
+		PrepSDKCall_AddParameter(SDKType_Bool, SDKPass_Plain); // bool const_string
+	}
 	hSDKAttributeHookFloat = EndPrepSDKCall();
 	if (!hSDKAttributeHookFloat) {
 		SetFailState("Could not initialize call to CAttributeManager::AttribHookValue<float>");
@@ -262,53 +508,61 @@ public void OnPluginStart() {
 	PrepSDKCall_AddParameter(SDKType_PlainOldData, SDKPass_Plain); // initial value
 	PrepSDKCall_AddParameter(SDKType_String, SDKPass_Pointer); // attribute class
 	PrepSDKCall_AddParameter(SDKType_CBaseEntity, SDKPass_Pointer); // CBaseEntity* entity
-	PrepSDKCall_AddParameter(SDKType_PlainOldData, SDKPass_Plain); // CUtlVector<CBaseEntity*>, set to nullptr
+	PrepSDKCall_AddParameter(SDKType_Address, SDKPass_Plain, VDECODE_FLAG_ALLOWNULL); // CUtlVector<CBaseEntity*>, set to nullptr
 	PrepSDKCall_AddParameter(SDKType_Bool, SDKPass_Plain); // bool const_string
 	hSDKAttributeHookInt = EndPrepSDKCall();
 	if (!hSDKAttributeHookInt) {
 		SetFailState("Could not initialize call to CAttributeManager::AttribHookValue<int>");
 	}
 
-	// linux signature. this uses a hidden pointer passed in before `this` on the stack
-	// so we'll do our best with static since SM doesn't support that calling convention
-	// no subclasses override this virtual function so we'll just call it directly
-	StartPrepSDKCall(SDKCall_Static);
-	PrepSDKCall_SetFromConf(hGameConf, SDKConf_Signature, "CAttributeManager::ApplyAttributeStringWrapper");
-	PrepSDKCall_SetReturnInfo(SDKType_PlainOldData, SDKPass_Plain); // return string_t
-	PrepSDKCall_AddParameter(SDKType_PlainOldData, SDKPass_Pointer); // return value
-	PrepSDKCall_AddParameter(SDKType_PlainOldData, SDKPass_Plain); // thisptr
-	PrepSDKCall_AddParameter(SDKType_PlainOldData, SDKPass_Plain); // string_t initial value
-	PrepSDKCall_AddParameter(SDKType_CBaseEntity, SDKPass_Pointer); // initator entity (should contain thisptr)
-	PrepSDKCall_AddParameter(SDKType_PlainOldData, SDKPass_Plain); // string_t attribute class
-	PrepSDKCall_AddParameter(SDKType_PlainOldData, SDKPass_Plain); // CUtlVector<CBaseEntity*>, set to nullptr
-	hSDKAttributeApplyStringWrapperLinux = EndPrepSDKCall();
-
-	if (!hSDKAttributeApplyStringWrapperLinux) {
-		// windows vcall. this one also uses a hidden pointer, but it's passed as the first param
-		// `this` remains unchanged so we can still use a vcall
+	// returns string_t by value through a hidden return pointer on every platform except linux64 (which returns it in a register)
+	// both windows builds use a normal thiscall: `this` stays in (e/r)cx and the hidden pointer is just the first explicit parameter (first stack arg on x86, rdx on x64)
+	// so windows32 resolves the address from the vtable and windows64 from a signature (the vtable index isn't stable across builds)
+	// linux32/linux64 use a static call so the hidden pointer (linux32) can sit before `this`
+	if (g_OS == OS_Windows || g_OS == OS_Windows64) {
 		StartPrepSDKCall(SDKCall_Raw);
-		PrepSDKCall_SetFromConf(hGameConf, SDKConf_Virtual, "CAttributeManager::ApplyAttributeStringWrapper");
-		PrepSDKCall_SetReturnInfo(SDKType_PlainOldData, SDKPass_Plain); // return string_t
-		PrepSDKCall_AddParameter(SDKType_PlainOldData, SDKPass_Pointer); // return value too
-		PrepSDKCall_AddParameter(SDKType_PlainOldData, SDKPass_Plain); // string_t initial value
-		PrepSDKCall_AddParameter(SDKType_CBaseEntity, SDKPass_Pointer); // CBaseEntity* entity
-		PrepSDKCall_AddParameter(SDKType_PlainOldData, SDKPass_Plain); // string_t attribute class
-		PrepSDKCall_AddParameter(SDKType_PlainOldData, SDKPass_Plain); // CUtlVector<CBaseEntity*>, set to nullptr
-		hSDKAttributeApplyStringWrapperWindows = EndPrepSDKCall();
+		PrepSDKCall_SetFromConf(hGameConf, g_OS == OS_Windows64 ? SDKConf_Signature : SDKConf_Virtual, "CAttributeManager::ApplyAttributeStringWrapper");
+		PrepSDKCall_SetReturnInfo(SDKType_Address, SDKPass_Plain); // return string_t
+		PrepSDKCall_AddParameter(SDKType_Address, SDKPass_Pointer, VDECODE_FLAG_ALLOWNULL); // hidden return pointer
+		PrepSDKCall_AddParameter(SDKType_Address, SDKPass_Plain, VDECODE_FLAG_ALLOWNULL); // string_t initial value
+		PrepSDKCall_AddParameter(SDKType_CBaseEntity, SDKPass_Pointer); // initiator entity
+		PrepSDKCall_AddParameter(SDKType_Address, SDKPass_Plain); // string_t attribute class
+		PrepSDKCall_AddParameter(SDKType_Address, SDKPass_Plain, VDECODE_FLAG_ALLOWNULL); // CUtlVector<CBaseEntity*>, set to nullptr
+		hSDKAttributeApplyStringWrapperVtable = EndPrepSDKCall();
+	} else {
+		StartPrepSDKCall(SDKCall_Static);
+		PrepSDKCall_SetFromConf(hGameConf, SDKConf_Signature, "CAttributeManager::ApplyAttributeStringWrapper");
+		PrepSDKCall_SetReturnInfo(SDKType_Address, SDKPass_Plain); // return string_t
+		if (g_OS != OS_Linux64) // linux64 returns string_t in a register, linux32 uses a hidden return pointer
+			PrepSDKCall_AddParameter(SDKType_Address, SDKPass_Pointer, VDECODE_FLAG_ALLOWNULL); // hidden return pointer
+		PrepSDKCall_AddParameter(SDKType_Address, SDKPass_Plain); // thisptr
+		PrepSDKCall_AddParameter(SDKType_Address, SDKPass_Plain, VDECODE_FLAG_ALLOWNULL); // string_t initial value
+		PrepSDKCall_AddParameter(SDKType_CBaseEntity, SDKPass_Pointer); // initiator entity
+		PrepSDKCall_AddParameter(SDKType_Address, SDKPass_Plain); // string_t attribute class
+		PrepSDKCall_AddParameter(SDKType_Address, SDKPass_Plain, VDECODE_FLAG_ALLOWNULL); // CUtlVector<CBaseEntity*>, set to nullptr
+		hSDKAttributeApplyStringWrapperSig = EndPrepSDKCall();
 	}
 
-	if (!hSDKAttributeApplyStringWrapperWindows && !hSDKAttributeApplyStringWrapperLinux) {
+	if (!hSDKAttributeApplyStringWrapperSig && !hSDKAttributeApplyStringWrapperVtable) {
 		SetFailState("Could not initialize call to CAttributeManager::ApplyAttributeStringWrapper");
 	}
 
 	StartPrepSDKCall(SDKCall_Raw); // CEconItemAttribute*
 	PrepSDKCall_SetFromConf(hGameConf, SDKConf_Virtual,
 			"ISchemaAttributeTypeBase::InitializeNewEconAttributeValue");
-	PrepSDKCall_AddParameter(SDKType_PlainOldData, SDKPass_Pointer, .encflags = VENCODE_FLAG_COPYBACK); // CAttributeDefinition*
+	PrepSDKCall_AddParameter(SDKType_PlainOldData, SDKPass_Pointer, .encflags = VENCODE_FLAG_COPYBACK); // attribute_data_union_t *out_pValue
 	hSDKAttributeValueInitialize = EndPrepSDKCall();
 	if (!hSDKAttributeValueInitialize) {
 		SetFailState("Could not initialize call to ISchemaAttributeTypeBase::InitializeNewEconAttributeValue");
 	}
+
+	// Duplicate SDKCall to specifically handle attribute_data_union_t byte *asBlobPointer
+	// attribute_data_union_t can contain a pointer and we can't handle both float/int and pointer variants with a single SDKCall
+	StartPrepSDKCall(SDKCall_Raw); // CEconItemAttribute*
+	PrepSDKCall_SetFromConf(hGameConf, SDKConf_Virtual,
+			"ISchemaAttributeTypeBase::InitializeNewEconAttributeValue");
+	PrepSDKCall_AddParameter(SDKType_Address, SDKPass_Pointer, VDECODE_FLAG_ALLOWNULL, VENCODE_FLAG_COPYBACK); // attribute_data_union_t *out_pValue
+	hSDKAttributeValueInitialize_Virtual = EndPrepSDKCall();
 
 	StartPrepSDKCall(SDKCall_Raw); // attr_type
 	PrepSDKCall_SetFromConf(hGameConf, SDKConf_Virtual,
@@ -323,28 +577,34 @@ public void OnPluginStart() {
 	PrepSDKCall_SetFromConf(hGameConf, SDKConf_Virtual,
 			"ISchemaAttributeTypeBase::BConvertStringToEconAttributeValue");
 	PrepSDKCall_SetReturnInfo(SDKType_Bool, SDKPass_Plain);
-	PrepSDKCall_AddParameter(SDKType_PlainOldData, SDKPass_Plain);
-	PrepSDKCall_AddParameter(SDKType_String, SDKPass_Pointer);
-	PrepSDKCall_AddParameter(SDKType_PlainOldData, SDKPass_Pointer, .encflags = VENCODE_FLAG_COPYBACK);
-	PrepSDKCall_AddParameter(SDKType_Bool, SDKPass_Plain);
+	PrepSDKCall_AddParameter(SDKType_PlainOldData, SDKPass_Plain);	//const CEconItemAttributeDefinition *pAttrDef
+	PrepSDKCall_AddParameter(SDKType_String, SDKPass_Pointer);		//const char *pszValue
+	PrepSDKCall_AddParameter(SDKType_PlainOldData, SDKPass_Pointer, .encflags = VENCODE_FLAG_COPYBACK);	//union attribute_data_union_t *out_pValue
+	PrepSDKCall_AddParameter(SDKType_Bool, SDKPass_Plain);			//bool bEnableTerribleBackwardsCompatibilitySchemaParsingCode
 	hSDKAttributeValueFromString = EndPrepSDKCall();
 	if (!hSDKAttributeValueFromString) {
+		SetFailState("Could not initialize call to ISchemaAttributeTypeBase::BConvertStringToEconAttributeValue");
+	}
+
+	// Duplicate SDKCall to specifically handle attribute_data_union_t byte *asBlobPointer
+	// attribute_data_union_t can contain a pointer and we can't handle both float/int and pointer variants with a single SDKCall
+	StartPrepSDKCall(SDKCall_Raw);
+	PrepSDKCall_SetFromConf(hGameConf, SDKConf_Virtual,
+			"ISchemaAttributeTypeBase::BConvertStringToEconAttributeValue");
+	PrepSDKCall_SetReturnInfo(SDKType_Bool, SDKPass_Plain);
+	PrepSDKCall_AddParameter(SDKType_PlainOldData, SDKPass_Plain);	//const CEconItemAttributeDefinition *pAttrDef
+	PrepSDKCall_AddParameter(SDKType_String, SDKPass_Pointer);		//const char *pszValue
+	PrepSDKCall_AddParameter(SDKType_Address, SDKPass_Pointer, VDECODE_FLAG_ALLOWNULL, VENCODE_FLAG_COPYBACK);	//union attribute_data_union_t *out_pValue
+	PrepSDKCall_AddParameter(SDKType_Bool, SDKPass_Plain);			//bool bEnableTerribleBackwardsCompatibilitySchemaParsingCode
+	hSDKAttributeValueFromString_Virtual = EndPrepSDKCall();
+	if (!hSDKAttributeValueFromString_Virtual) {
 		SetFailState("Could not initialize call to ISchemaAttributeTypeBase::BConvertStringToEconAttributeValue");
 	}
 
 	StartPrepSDKCall(SDKCall_Raw);
 	PrepSDKCall_SetFromConf(hGameConf, SDKConf_Virtual,
 			"ISchemaAttributeTypeBase::UnloadEconAttributeValue");
-	PrepSDKCall_AddParameter(SDKType_PlainOldData, SDKPass_Plain);
-	hSDKAttributeValueUnload = EndPrepSDKCall();
-	if (!hSDKAttributeValueUnload) {
-		SetFailState("Could not initialize call to ISchemaAttributeTypeBase::UnloadEconAttributeValue");
-	}
-
-	StartPrepSDKCall(SDKCall_Raw);
-	PrepSDKCall_SetFromConf(hGameConf, SDKConf_Virtual,
-			"ISchemaAttributeTypeBase::UnloadEconAttributeValue");
-	PrepSDKCall_AddParameter(SDKType_PlainOldData, SDKPass_Pointer);
+	PrepSDKCall_AddParameter(SDKType_Address, SDKPass_Pointer); //union attribute_data_union_t *out_pValue
 	hSDKAttributeValueUnloadByRef = EndPrepSDKCall();
 	if (!hSDKAttributeValueUnloadByRef) {
 		SetFailState("Could not initialize call to ISchemaAttributeTypeBase::UnloadEconAttributeValue");
@@ -353,8 +613,8 @@ public void OnPluginStart() {
 	StartPrepSDKCall(SDKCall_Static);
 	PrepSDKCall_SetFromConf(hGameConf, SDKConf_Signature,
 			"CopyStringAttributeValueToCharPointerOutput");
-	PrepSDKCall_AddParameter(SDKType_PlainOldData, SDKPass_Plain);
-	PrepSDKCall_AddParameter(SDKType_PlainOldData, SDKPass_Pointer, VDECODE_FLAG_ALLOWNULL, VENCODE_FLAG_COPYBACK); // char**, variable contains char* on return
+	PrepSDKCall_AddParameter(SDKType_Address, SDKPass_Plain);	//const CAttribute_String *pValue
+	PrepSDKCall_AddParameter(SDKType_Address, SDKPass_Pointer, VDECODE_FLAG_ALLOWNULL, VENCODE_FLAG_COPYBACK); // char**, variable contains char* on return
 	hSDKCopyStringAttributeToCharPointer = EndPrepSDKCall();
 	if (!hSDKCopyStringAttributeToCharPointer) {
 		SetFailState("Could not initialize call to CopyStringAttributeValueToCharPointerOutput");
@@ -368,8 +628,17 @@ public void OnPluginStart() {
 
 	g_ManagedAllocatedValues = new ArrayList(sizeof(HeapAttributeValue));
 	g_AttributeDefinitionMapping = new StringMap();
+	g_imapAttrIsNetworked = new IntMap();
 
 	g_AllocPooledStringCache = new StringMap();
+
+	g_CUtlVector.Init();
+	g_CAttributeList.Init();
+	g_CEconItemAttribute.Init();
+	g_CEconItemAttributeDefinition.Init();
+	g_CEconItem.Init();
+	g_CEconItemDefinition.Init();
+	g_static_attrib_t.Init();
 }
 
 public void OnPluginEnd() {
@@ -391,6 +660,7 @@ public void OnMapEnd() {
 	// because attribute injection's a thing now, we invalidate our internal mappings
 	// in case everything changes during the next map
 	g_AttributeDefinitionMapping.Clear();
+	g_imapAttrIsNetworked.Clear();
 
 	// pooled strings might get purged only between map changes
 	g_AllocPooledStringCache.Clear();
@@ -405,7 +675,7 @@ public int Native_IsIntegerValue(Handle plugin, int numParams) {
 		return ThrowNativeError(1, "Attribute index %d is invalid", iDefIndex);
 	}
 
-	return LoadFromAddressOffset(pEconItemAttributeDefinition, 0x0E, NumberType_Int8);
+	return LoadFromAddress(pEconItemAttributeDefinition + g_CEconItemAttributeDefinition.m_bStoredAsInteger, NumberType_Int8);
 }
 
 static int GetStaticAttribs(Address pItemDef, int[] iAttribIndices, int[] iAttribValues, int size = 16) {
@@ -414,18 +684,23 @@ static int GetStaticAttribs(Address pItemDef, int[] iAttribIndices, int[] iAttri
 	// 0x1C = CEconItemDefinition.m_Attributes (type CUtlVector<static_attrib_t>)
 	// 0x1C = (...) m_Attributes.m_Memory.m_pMemory (m_Attributes + 0x00)
 	// 0x28 = (...) m_Attributes.m_Size (m_Attributes + 0x0C)
-	int iNumAttribs = LoadFromAddressOffset(pItemDef, 0x28, NumberType_Int32);
+	int iNumAttribs = LoadFromAddress(pItemDef + g_CEconItemDefinition.m_vecStaticAttributes_m_Size, NumberType_Int32);
 	if (!iNumAttribs) {
 		return 0;
 	}
 
-	Address pAttribList = DereferencePointer(pItemDef, .offset = 0x1C);
+	Address pAttribList = LoadAddressFromAddress(pItemDef + g_CEconItemDefinition.m_vecStaticAttributes);
 
 	// Read static_attrib_t (size 0x08) entries from contiguous block of memory
 	for (int i = 0; i < iNumAttribs && i < size; i++) {
-		Address pStaticAttrib = pAttribList + view_as<Address>(i * 0x08);
-		iAttribIndices[i] = LoadFromAddress(pStaticAttrib, NumberType_Int16);
-		iAttribValues[i] = LoadFromAddressOffset(pStaticAttrib, 0x04, NumberType_Int32);
+		Address pStaticAttrib = pAttribList + view_as<Address>(i * g_static_attrib_t.iSizeOf);
+		iAttribIndices[i] = LoadFromAddress(pStaticAttrib, NumberType_Int16); // g_static_attrib_t.iDefIndex
+
+		// non-networked values are 8-byte pointers
+		// 0 on x64 (can't fit a float), low 32 bits on x86
+		if (!Is64Bit() || IsNetworkedByDefIndex(iAttribIndices[i])) {
+			iAttribValues[i] = LoadFromAddress(pStaticAttrib + g_static_attrib_t.m_value, NumberType_Int32);
+		}
 	}
 	return iNumAttribs;
 }
@@ -447,13 +722,16 @@ public int Native_GetStaticAttribs(Handle plugin, int numParams) {
 		return -1;
 	}
 
-	Address pItemDef = SDKCall(hSDKGetItemDefinition, pSchema, iItemDefIndex);
+	Address pItemDef;
+	SDKCall(hSDKGetItemDefinition, pSchema, pItemDef, iItemDefIndex);
 	AssertValidAddress(pItemDef);
 
-	int[] iAttribIndices = new int[size]; int[] iAttribValues = new int[size];
+	int[] iAttribIndices = new int[size];
+	int[] iAttribValues = new int[size];
 	int iCount = GetStaticAttribs(pItemDef, iAttribIndices, iAttribValues, size);
-	SetNativeArray(2, iAttribIndices, size);
-	SetNativeArray(3, iAttribValues, size);	//cast to float on inc side
+	int written = iCount < size ? iCount : size;
+	SetNativeArray(2, iAttribIndices, written);
+	SetNativeArray(3, iAttribValues, written);	//cast to float on inc side
 	return iCount;
 }
 
@@ -467,41 +745,46 @@ static int GetSOCAttribs(int iEntity, int[] iAttribIndices, int[] iAttribValues,
 	}
 
 	// pEconItem may be null if the item doesn't have SOC data (i.e., not from the item server)
-	Address pEconItem = SDKCall(hSDKGetSOCData, pEconItemView);
+	Address pEconItem;
+	SDKCall(hSDKGetSOCData, pEconItemView, pEconItem);
 	if (!pEconItem) {
 		return 0;
 	}
 
 	// 0x34 = CEconItem.m_pAttributes (type CUtlVector<static_attrib_t>*, possibly null)
-	Address pCustomData = DereferencePointer(pEconItem, .offset = 0x34);
+	Address pCustomData = LoadAddressFromAddress(pEconItem + g_CEconItem.m_pCustomData);
 	if (pCustomData) {
 		AssertValidAddress(pCustomData);
 
 		// 0x0C = (...) m_pAttributes->m_Size (m_pAttributes + 0x0C)
 		// 0x00 = (...) m_pAttributes->m_Memory.m_pMemory (m_pAttributes + 0x00)
-		int iCount = LoadFromAddressOffset(pCustomData, 0x0C, NumberType_Int32);
+		int iCount = LoadFromAddress(pCustomData + g_CUtlVector.m_size, NumberType_Int32);
 		if (!iCount) {
 			// abort early if the attribute list is empty -- we might deref garbage otherwise
 			return 0;
 		}
 
-		Address pCustomDataArray = DereferencePointer(pCustomData);
+		Address pCustomDataArray = LoadAddressFromAddress(pCustomData);
 
 		// Read static_attrib_t (size 0x08) entries from contiguous block of memory
 		for (int i = 0; i < iCount && i < size; ++i) {
-			Address pSOCAttribEntry = pCustomDataArray + view_as<Address>(i * 0x08);
+			Address pSOCAttribEntry = pCustomDataArray + view_as<Address>(i * g_static_attrib_t.iSizeOf);
 
-			iAttribIndices[i] = LoadFromAddress(pSOCAttribEntry, NumberType_Int16);
-			iAttribValues[i] = LoadFromAddressOffset(pSOCAttribEntry, 0x04, NumberType_Int32);
+			iAttribIndices[i] = LoadFromAddress(pSOCAttribEntry, NumberType_Int16); // g_static_attrib_t.iDefIndex
+			if (!Is64Bit() || IsNetworkedByDefIndex(iAttribIndices[i])) {
+				iAttribValues[i] = LoadFromAddress(pSOCAttribEntry + g_static_attrib_t.m_value, NumberType_Int32);
+			}
 		}
 		return iCount;
 	}
 
 	//(CEconItem+0x27 & 0b100 & 0xFF) != 0
-	bool hasInternalAttribute = !!(LoadFromAddressOffset(pEconItem, 0x27, NumberType_Int8) & 0b100);
+	bool hasInternalAttribute = !!(LoadFromAddress(pEconItem + g_CEconItem.m_dirtyBits, NumberType_Int8) & 0b100);
 	if (hasInternalAttribute) {
-		iAttribIndices[0] = LoadFromAddressOffset(pEconItem, 0x2C, NumberType_Int16);
-		iAttribValues[0] = LoadFromAddressOffset(pEconItem, 0x30, NumberType_Int32);
+		iAttribIndices[0] = LoadFromAddress(pEconItem + g_CEconItem.m_CustomAttribSingleton_m_unDefinitionIndex, NumberType_Int16);
+		if (!Is64Bit() || IsNetworkedByDefIndex(iAttribIndices[0])) {
+			iAttribValues[0] = LoadFromAddress(pEconItem + g_CEconItem.m_CustomAttribSingleton_m_flValue, NumberType_Int32);
+		}
 		return 1;
 	}
 	return 0;
@@ -523,12 +806,20 @@ public int Native_GetSOCAttribs(Handle plugin, int numParams) {
 		return ThrowNativeError(SP_ERROR_NATIVE, "Entity %d (%d) is invalid", EntIndexToEntRef(iEntity), iEntity);
 	}
 
-	//maybe move some address stuff to here from the stock, but for now it's okay
-	int[] iAttribIndices = new int[size]; int[] iAttribValues = new int[size];
+	int[] iAttribIndices = new int[size];
+	int[] iAttribValues = new int[size];
 	int iCount = GetSOCAttribs(iEntity, iAttribIndices, iAttribValues, size);
-	SetNativeArray(2, iAttribIndices, size);
-	SetNativeArray(3, iAttribValues, size);	//cast to float on inc side
+	int written = iCount < size ? iCount : size;
+	SetNativeArray(2, iAttribIndices, written);
+	SetNativeArray(3, iAttribValues, written);	//cast to float on inc side
 	return iCount;
+}
+
+
+/* native bool TF2Attrib_IsNetworked(int iDefIndex); */
+public int Native_IsNetworked(Handle plugin, int numParams) {
+	int iDefIndex = GetNativeCell(1);
+	return IsNetworkedByDefIndex(iDefIndex);
 }
 
 /* native bool TF2Attrib_SetByName(int iEntity, char[] strAttrib, float flValue); */
@@ -602,6 +893,10 @@ public int Native_SetAttribStringByName(Handle plugin, int numParams) {
 		return false;
 	}
 
+	if (Is64Bit() && !IsNetworkedByDefIndex(attrdef)) {
+		return ThrowNativeError(SP_ERROR_NATIVE, "Attribute '%s' is a non-networked type, which cannot be set on 64-bit servers", strAttrib);
+	}
+
 	// allocate a CEconItemAttribute instance in an entity's runtime attribute list
 	if (!InitializeAttributeValue(pEntAttributeList, attrdef, strAttribVal)) {
 		return false;
@@ -612,13 +907,13 @@ public int Native_SetAttribStringByName(Handle plugin, int numParams) {
 /* native Address TF2Attrib_GetByName(int iEntity, char[] strAttrib); */
 public int Native_GetAttrib(Handle plugin, int numParams) {
 	// There is a CAttributeList::GetByName, wonder why this is being done instead...
-	int entity = GetNativeCell(1);
+	int entity = GetNativeCell(2);
 	if (!IsValidEntity(entity)) {
 		return ThrowNativeError(SP_ERROR_NATIVE, "Entity %d (%d) is invalid", EntIndexToEntRef(entity), entity);
 	}
 
 	char strAttrib[MAX_ATTRIBUTE_NAME_LENGTH];
-	GetNativeString(2, strAttrib, sizeof(strAttrib));
+	GetNativeString(3, strAttrib, sizeof(strAttrib));
 
 	Address pEntAttributeList = GetEntityAttributeList(entity);
 	if (!pEntAttributeList) {
@@ -629,24 +924,29 @@ public int Native_GetAttrib(Handle plugin, int numParams) {
 	if (!GetAttributeDefIndexByName(strAttrib, iDefIndex)) {
 		return ThrowNativeError(SP_ERROR_NATIVE, "Attribute name '%s' is invalid", strAttrib);
 	}
-	return SDKCall(hSDKGetAttributeByID, pEntAttributeList, iDefIndex);
+
+	Address pAttrib;
+	SDKCall(hSDKGetAttributeByID, pEntAttributeList, pAttrib, iDefIndex);
+	return SetNativeReturnAddress(pAttrib);
 }
 
 /* native Address TF2Attrib_GetByDefIndex(int iEntity, int iDefIndex); */
 public int Native_GetAttribByID(Handle plugin, int numParams) {
-	int entity = GetNativeCell(1);
+	int entity = GetNativeCell(2);
 	if (!IsValidEntity(entity)) {
 		return ThrowNativeError(SP_ERROR_NATIVE, "Entity %d (%d) is invalid", EntIndexToEntRef(entity), entity);
 	}
 
-	int iDefIndex = GetNativeCell(2);
+	int iDefIndex = GetNativeCell(3);
 
 	Address pEntAttributeList = GetEntityAttributeList(entity);
 	if (!pEntAttributeList) {
-		return 0;
+		return SetNativeReturnAddress(Address_Null);
 	}
 
-	return SDKCall(hSDKGetAttributeByID, pEntAttributeList, iDefIndex);
+	Address pAttrib;
+	SDKCall(hSDKGetAttributeByID, pEntAttributeList, pAttrib, iDefIndex);
+	return SetNativeReturnAddress(pAttrib);
 }
 
 /* native bool TF2Attrib_RemoveByName(int iEntity, char[] strAttrib); */
@@ -714,56 +1014,60 @@ public int Native_RemoveAll(Handle plugin, int numParams) {
 
 /* native void TF2Attrib_SetDefIndex(Address pAttrib, int iDefIndex); */
 public int Native_SetID(Handle plugin, int numParams) {
-	Address pAttrib = GetNativeCell(1);
+	Address pAttrib = GetNativeAddress(1);
 	int iDefIndex = GetNativeCell(2);
-	StoreToAddressOffset(pAttrib, 0x04, iDefIndex, NumberType_Int16);
+	StoreToAddress(pAttrib + g_CEconItemAttribute.m_iAttributeDefinitionIndex, iDefIndex, NumberType_Int16);
 	return iDefIndex;
 }
 
 /* native int TF2Attrib_GetDefIndex(Address pAttrib); */
 public int Native_GetID(Handle plugin, int numParams) {
-	Address pAttrib = GetNativeCell(1);
-	return LoadFromAddressOffset(pAttrib, 0x04, NumberType_Int16);
+	Address pAttrib = GetNativeAddress(1);
+	return LoadFromAddress(pAttrib + g_CEconItemAttribute.m_iAttributeDefinitionIndex, NumberType_Int16);
 }
 
 /* native void TF2Attrib_SetValue(Address pAttrib, float flValue); */
 public int Native_SetVal(Handle plugin, int numParams) {
-	Address pAttrib = GetNativeCell(1);
+	Address pAttrib = GetNativeAddress(1);
 	int flVal = GetNativeCell(2);	//It's a float but avoiding tag mismatch warnings from StoreToAddress
-	StoreToAddressOffset(pAttrib, 0x08, flVal, NumberType_Int32);
+	StoreToAddress(pAttrib + g_CEconItemAttribute.m_flValue, flVal, NumberType_Int32);
 	return flVal;
 }
 
 /* native float TF2Attrib_GetValue(Address pAttrib); */
 public int Native_GetVal(Handle plugin, int numParams) {
-	Address pAttrib = GetNativeCell(1);
-	return LoadFromAddressOffset(pAttrib, 0x08, NumberType_Int32);
+	Address pAttrib = GetNativeAddress(1);
+	return LoadFromAddress(pAttrib + g_CEconItemAttribute.m_flValue, NumberType_Int32);
 }
 
-/* TF2Attrib_UnsafeGetStringValue(any pRawValue, char[] buffer, int maxlen); */
+/* native int TF2Attrib_UnsafeGetStringValue(Address pRawValue, char[] buffer, int maxlen); */
 public int Native_GetStringVal(Handle plugin, int numParams) {
-	Address pRawValue = GetNativeCell(1);
+	if (Is64Bit()) {
+		return ThrowNativeError(SP_ERROR_NATIVE, "This native is not supported on 64-bit servers");
+	}
 
+	Address pRawValue = GetNativeAddress(1);
 	int maxlen = GetNativeCell(3), length;
+
 	char[] buffer = new char[maxlen];
 
-	ReadStringAttributeValue(pRawValue, buffer, maxlen);
+	length = ReadStringAttributeValue(pRawValue, buffer, maxlen);
 	SetNativeString(2, buffer, maxlen, .bytes = length);
 	return length;
 }
 
 /* native void TF2Attrib_SetRefundableCurrency(Address pAttrib, int nCurrency); */
 public int Native_SetCurrency(Handle plugin, int numParams) {
-	Address pAttrib = GetNativeCell(1);
+	Address pAttrib = GetNativeAddress(1);
 	int nCurrency = GetNativeCell(2);
-	StoreToAddressOffset(pAttrib, 0x0C, nCurrency, NumberType_Int32);
+	StoreToAddress(pAttrib + g_CEconItemAttribute.m_nRefundableCurrency, nCurrency, NumberType_Int32);
 	return nCurrency;
 }
 
 /* native int TF2Attrib_GetRefundableCurrency(Address pAttrib); */
 public int Native_GetCurrency(Handle plugin, int numParams) {
-	Address pAttrib = GetNativeCell(1);
-	return LoadFromAddressOffset(pAttrib, 0x0C, NumberType_Int32);
+	Address pAttrib = GetNativeAddress(1);
+	return LoadFromAddress(pAttrib + g_CEconItemAttribute.m_nRefundableCurrency, NumberType_Int32);
 }
 
 public int Native_DeprecatedPropertyAccess(Handle plugin, int numParams) {
@@ -815,24 +1119,25 @@ public int Native_ListIDs(Handle plugin, int numParams) {
 	}
 
 	// 0x10 = CAttributeList.m_Attributes.m_Size (m_Attributes + 0x0C)
-	int iNumAttribs = LoadFromAddressOffset(pAttributeList, 0x10, NumberType_Int32);
+	int iNumAttribs = LoadFromAddress(pAttributeList + g_CAttributeList.m_Attributes_m_Size, NumberType_Int32);
 	if (!iNumAttribs) {
 		return 0;
 	}
 
 	// 0x04 = CAttributeList.m_Attributes (type CUtlVector<CEconItemAttribute>)
 	// 0x04 = CAttributeList.m_Attributes.m_Memory.m_pMemory
-	Address pAttribListData = DereferencePointer(pAttributeList, .offset = 0x04);
+	Address pAttribListData = LoadAddressFromAddress(pAttributeList + g_CAttributeList.m_Attributes);
 	AssertValidAddress(pAttribListData);
 
 	int[] iAttribIndices = new int[size];
 
 	// Read CEconItemAttribute (size 0x10) entries from contiguous block of memory
 	for (int i = 0; i < iNumAttribs && i < size; i++) {
-		Address pAttributeEntry = pAttribListData + view_as<Address>(i * 0x10);
-		iAttribIndices[i] = LoadFromAddressOffset(pAttributeEntry, 0x04, NumberType_Int16);
+		Address pAttributeEntry = pAttribListData + view_as<Address>(i * g_CEconItemAttribute.iSizeOf);
+		iAttribIndices[i] = LoadFromAddress(pAttributeEntry + g_CEconItemAttribute.m_iAttributeDefinitionIndex, NumberType_Int16);
 	}
-	SetNativeArray(2, iAttribIndices, size);
+	int written = iNumAttribs < size ? iNumAttribs : size;
+	SetNativeArray(2, iAttribIndices, written);
 	return iNumAttribs;
 }
 
@@ -899,6 +1204,11 @@ public int Native_HookValueFloat(Handle plugin, int numParams) {
 
 	int entity = GetNativeCell(3);
 
+	if (g_OS == OS_Linux64) {
+		return SDKCall(hSDKAttributeHookFloat, attrClass, entity,
+			Address_Null, false, initial);
+	}
+
 	return SDKCall(hSDKAttributeHookFloat, initial, attrClass, entity,
 			Address_Null, false);
 }
@@ -918,8 +1228,7 @@ public int Native_HookValueInt(Handle plugin, int numParams) {
 			Address_Null, false);
 }
 
-/* native void TF2Attrib_HookValueString(const char[] initial, const char[] attrClass,
-		int iEntity, char[] buffer, int maxlen); */
+/* native void TF2Attrib_HookValueString(const char[] initial, const char[] attrClass, int iEntity, char[] buffer, int maxlen); */
 public int Native_HookValueString(Handle plugin, int numParams) {
 	int buflen;
 
@@ -933,29 +1242,35 @@ public int Native_HookValueString(Handle plugin, int numParams) {
 
 	int entity = GetNativeCell(3);
 
+	buflen = GetNativeCell(5);
+	char[] output = new char[buflen];
+
 	// string needs to be pooled for caching purposes
 	Address pInput = AllocPooledString(inputValue);
 	Address pAttrClass = AllocPooledString(attrClass);
 
-	buflen = GetNativeCell(5);
-	char[] output = new char[buflen];
-
 	Address pOutput;
-	if (hSDKAttributeApplyStringWrapperWindows) {
-		// windows version; hidden ptr pushes params, `this` still in correct register
+	if (hSDKAttributeApplyStringWrapperVtable) {
+		// windows32/windows64 thiscall; hidden return pointer is the first explicit arg, `this` stays in (e/r)cx
 		Address result;
-		pOutput = SDKCall(hSDKAttributeApplyStringWrapperWindows,
-				GetEntityAttributeManager(entity), result, pInput, entity, pAttrClass,
-				Address_Null);
-	} else if (hSDKAttributeApplyStringWrapperLinux) {
-		// linux version; hidden ptr moves the stack and this forward
-		Address result;
-		pOutput = SDKCall(hSDKAttributeApplyStringWrapperLinux, result,
-				GetEntityAttributeManager(entity), pInput, entity, pAttrClass, Address_Null);
-	}
+		SDKCall(hSDKAttributeApplyStringWrapperVtable, GetEntityAttributeManager(entity), pOutput, result, pInput, entity, pAttrClass, Address_Null);
 
-	// read from the output string_t
-	LoadStringFromAddress(DereferencePointer(pOutput), output, buflen);
+		// read from the output string_t
+		LoadStringFromAddress(LoadAddressFromAddress(pOutput), output, buflen);
+
+	} else if (g_OS == OS_Linux64) {
+		// linux64 returns string_t in a register, no hidden pointer
+		SDKCall(hSDKAttributeApplyStringWrapperSig, pOutput, GetEntityAttributeManager(entity), pInput, entity, pAttrClass, Address_Null);
+
+		LoadStringFromAddress(pOutput, output, buflen);
+
+	} else {
+		// linux32; hidden return pointer first, then thisptr
+		Address result;
+		SDKCall(hSDKAttributeApplyStringWrapperSig, pOutput, result, GetEntityAttributeManager(entity), pInput, entity, pAttrClass, Address_Null);
+
+		LoadStringFromAddress(LoadAddressFromAddress(pOutput), output, buflen);
+	}
 
 	int written;
 	SetNativeString(4, output, buflen, .bytes = written);
@@ -965,7 +1280,9 @@ public int Native_HookValueString(Handle plugin, int numParams) {
 /* helper functions */
 
 static Address GetItemSchema() {
-	return SDKCall(hSDKSchema);
+	Address pSchema;
+	SDKCall(hSDKSchema, pSchema);
+	return pSchema;
 }
 
 static Address GetEntityEconItemView(int entity) {
@@ -990,7 +1307,7 @@ static Address GetEntityAttributeList(int entity) {
 
 static Address GetAttributeDefinitionByName(const char[] name) {
 	Address cachedResult;
-	if (g_AttributeDefinitionMapping.GetValue(name, cachedResult)) {
+	if (StringMap_GetAddress(g_AttributeDefinitionMapping, name, cachedResult)) {
 		return cachedResult;
 	}
 
@@ -998,8 +1315,8 @@ static Address GetAttributeDefinitionByName(const char[] name) {
 	if (!pSchema) {
 		return Address_Null;
 	}
-	cachedResult = SDKCall(hSDKGetAttributeDefByName, pSchema, name);
-	g_AttributeDefinitionMapping.SetValue(name, cachedResult);
+	SDKCall(hSDKGetAttributeDefByName, pSchema, cachedResult, name);
+	StringMap_SetAddress(g_AttributeDefinitionMapping, name, cachedResult);
 	return cachedResult;
 }
 
@@ -1008,7 +1325,9 @@ static Address GetAttributeDefinitionByID(int id) {
 	if (!pSchema) {
 		return Address_Null;
 	}
-	return SDKCall(hSDKGetAttributeDef, pSchema, id);
+	Address pAttrDef;
+	SDKCall(hSDKGetAttributeDef, pSchema, pAttrDef, id);
+	return pAttrDef;
 }
 
 /**
@@ -1021,7 +1340,7 @@ static bool GetAttributeDefIndexByName(const char[] name, int &iDefIndex) {
 		return false;
 	}
 
-	iDefIndex = LoadFromAddressOffset(pAttribDef, 0x04, NumberType_Int16);
+	iDefIndex = LoadFromAddress(pAttribDef + g_CEconItemAttributeDefinition.m_nDefIndex, NumberType_Int16);
 	return true;
 }
 
@@ -1031,7 +1350,7 @@ static Address GetEntityAttributeManager(int entity) {
 		return Address_Null;
 	}
 
-	Address pAttributeManager = DereferencePointer(pAttributeList, .offset = 0x18);
+	Address pAttributeManager = LoadAddressFromAddress(pAttributeList + g_CAttributeList.m_pManager);
 	AssertValidAddress(pAttributeManager);
 	return pAttributeManager;
 }
@@ -1043,55 +1362,72 @@ static Address GetEntityAttributeManager(int entity) {
  */
 static bool InitializeAttributeValue(Address pAttributeList, int attrdef, const char[] value) {
 	Address pAttrDef = GetAttributeDefinitionByID(attrdef);
-	if (!pAttrDef) {
+	if (pAttrDef == Address_Null) {
 		return false;
 	}
 
-	Address pDefType = DereferencePointer(pAttrDef + view_as<Address>(0x08));
+	Address pDefType = LoadAddressFromAddress(pAttrDef + g_CEconItemAttributeDefinition.m_pAttrType);
 
 	bool networked = IsNetworkedRuntimeAttribute(pDefType);
 
 	if (!networked) {
+		if (Is64Bit()) {
+			return false;
+		}
+
 		// reusing any existing matching attribute value strings
-		Address rawAttributeValue = GetHeapManagedAttributeString(attrdef, value);
-		if (rawAttributeValue) {
-			SDKCall(hSDKSetRuntimeValue, pAttributeList, pAttrDef, view_as<float>(rawAttributeValue));
+		Address rawAttributeValue = GetHeapManagedAttributeString(attrdef, value); // This assumes the union value type will be a pointer
+
+		if (rawAttributeValue != Address_Null) {
+			// x86 only -- this lops off the high 32 bits of the pointer
+			SDKCall(hSDKSetRuntimeValue, pAttributeList, pAttrDef, view_as<float>(view_as<int>(rawAttributeValue)));
 			return true;
 		}
+
+		/**
+		 * initialize raw value; any existing values present in the CEconItemAttribute* are trashed
+		 *
+		 * that is okay -- tf2attributes is the only one managing heap-allocated values, and
+		 * it holds its own reference to the value for freeing later
+		 *
+		 * we don't attempt to free any existing attribute value mid-game as we don't know if
+		 * the value is present in multiple places (no refcounts!)
+		 */
+		SDKCall(hSDKAttributeValueInitialize_Virtual, pDefType, rawAttributeValue);
+
+		if (!SDKCall(hSDKAttributeValueFromString_Virtual, pDefType, pAttrDef, value, rawAttributeValue, true)) {
+			// in case AttributeValueInitialize created a pointer, unload it
+			if (rawAttributeValue != Address_Null)
+				UnloadAttributeRawValue(pAttrDef, rawAttributeValue);
+			// we couldn't parse the attribute value, abort
+			return false;
+		}
+
+		// same deal -- truncates to 32 bits, so x86 only
+		SDKCall(hSDKSetRuntimeValue, pAttributeList, pAttrDef, view_as<float>(view_as<int>(rawAttributeValue)));
+
+		// add to our managed values
+		// this definitely works for heap, not sure if it works for inline
+		HeapAttributeValue attribute;
+		attribute.m_iAttributeDefinitionIndex = attrdef;
+		attribute.m_pAttributeValue = rawAttributeValue;
+
+		g_ManagedAllocatedValues.PushArray(attribute);
+
+		return true;
 	}
 
-	// since attribute value is a union of 32 bit types, this is okay
+	// attribute value is a union of int, float, and pointer types, we assume networked won't ever be a pointer
 	int attributeValue = 0;
 
-	/**
-	 * initialize raw value; any existing values present in the CEconItemAttribute* are trashed
-	 *
-	 * that is okay -- tf2attributes is the only one managing heap-allocated values, and
-	 * it holds its own reference to the value for freeing later
-	 *
-	 * we don't attempt to free any existing attribute value mid-game as we don't know if
-	 * the value is present in multiple places (no refcounts!)
-	 */
 	SDKCall(hSDKAttributeValueInitialize, pDefType, attributeValue);
 
 	if (!SDKCall(hSDKAttributeValueFromString, pDefType, pAttrDef, value, attributeValue, true)) {
-		// in case AttributeValueInitialize created a pointer, unload it
-		UnloadAttributeRawValue(pAttrDef, view_as<Address>(attributeValue));
 		// we couldn't parse the attribute value, abort
 		return false;
 	}
 
 	SDKCall(hSDKSetRuntimeValue, pAttributeList, pAttrDef, view_as<float>(attributeValue));
-
-	if (!networked) {
-		// add to our managed values
-		// this definitely works for heap, not sure if it works for inline
-		HeapAttributeValue attribute;
-		attribute.m_iAttributeDefinitionIndex = attrdef;
-		attribute.m_pAttributeValue = view_as<Address>(attributeValue);
-
-		g_ManagedAllocatedValues.PushArray(attribute);
-	}
 	return true;
 }
 
@@ -1128,20 +1464,30 @@ static Address GetHeapManagedAttributeString(int attrdef, const char[] value) {
 /**
  * Returns true if the given attribute type can (normally) be networked.
  * We make the assumption that non-networked attributes have to be heap / inline allocated.
+ * This should correlate with an attribute's "attribute_type" value listed in items_game.txt.
+ * If the "attribute_type" key is missing or has value "float"(never used), then it is networked.
  */
 static bool IsNetworkedRuntimeAttribute(Address pDefType) {
 	return SDKCall(hSDKAttributeTypeCanBeNetworked, pDefType);
 }
 
-/**
- * Unloads the attribute in a given CEconItemAttribute instance.
- */
-#pragma unused UnloadAttributeValue
-static void UnloadAttributeValue(Address pAttrDef, Address pEconItemAttribute) {
-	Address pDefType = DereferencePointer(pAttrDef + view_as<Address>(0x08));
-	Address pAttributeValue = pEconItemAttribute + view_as<Address>(0x08);
+bool IsNetworkedByDefIndex(int attrdef) {
+	bool bNetworked;
 
-	SDKCall(hSDKAttributeValueUnload, pDefType, pAttributeValue);
+	if (g_imapAttrIsNetworked.GetValue(attrdef, bNetworked)) {
+		return bNetworked;
+	}
+
+	Address pAttrDef = GetAttributeDefinitionByID(attrdef);
+	if (pAttrDef == Address_Null) {
+		return false;
+	}
+
+	Address pDefType = LoadAddressFromAddress(pAttrDef + g_CEconItemAttributeDefinition.m_pAttrType);
+	bNetworked = IsNetworkedRuntimeAttribute(pDefType);
+	g_imapAttrIsNetworked.SetValue(attrdef, bNetworked);
+
+	return bNetworked;
 }
 
 /**
@@ -1149,7 +1495,7 @@ static void UnloadAttributeValue(Address pAttrDef, Address pEconItemAttribute) {
  */
 static void UnloadAttributeRawValue(Address pAttrDef, Address pAttributeValue) {
 	Address pAttributeDataUnion = pAttributeValue;
-	Address pDefType = DereferencePointer(pAttrDef + view_as<Address>(0x08));
+	Address pDefType = LoadAddressFromAddress(pAttrDef + g_CEconItemAttributeDefinition.m_pAttrType);
 	SDKCall(hSDKAttributeValueUnloadByRef, pDefType, pAttributeDataUnion);
 }
 
@@ -1159,8 +1505,8 @@ static void UnloadAttributeRawValue(Address pAttrDef, Address pAttributeValue) {
 static bool IsAttributeString(int attrdef) {
 	Address pAttrDef = GetAttributeDefinitionByID(attrdef);
 	Address pKnownStringAttribDef = GetAttributeDefinitionByName("cosmetic taunt sound");
-	return pAttrDef && pKnownStringAttribDef
-			&& DereferencePointer(pAttrDef, 0x08) == DereferencePointer(pKnownStringAttribDef, 0x08);
+	return pAttrDef != Address_Null && pKnownStringAttribDef != Address_Null
+		&& LoadAddressFromAddress(pAttrDef + g_CEconItemAttributeDefinition.m_pAttrType) == LoadAddressFromAddress(pKnownStringAttribDef + g_CEconItemAttributeDefinition.m_pAttrType);
 }
 
 /**
@@ -1193,6 +1539,11 @@ static int ReadStringAttributeValue(Address pRawValue, char[] buffer, int maxlen
  * the heap runtime attributes we managed.
  */
 static void RemoveNonNetworkedRuntimeAttributesOnEntities() {
+	// heap-allocated (non-networked) values are only ever added on 32-bit
+	if (Is64Bit()) {
+		return;
+	}
+
 	// remove heap-based attributes from any existing entities so they don't use-after-free
 	int entity = -1;
 	while ((entity = FindEntityByClassname(entity, "*")) != -1) {
@@ -1210,32 +1561,32 @@ static void RemoveNonNetworkedRuntimeAttributesOnEntities() {
 		// the runtime attribute list can be any size, the current limit of 20 is on networked
 		ArrayList heapedAttribDefs = new ArrayList();
 
-		int iNumAttribs = LoadFromAddressOffset(pAttributeList, 0x10, NumberType_Int32);
+		int iNumAttribs = LoadFromAddress(pAttributeList + g_CAttributeList.m_Attributes_m_Size, NumberType_Int32);
 		if (!iNumAttribs) {
 			continue;
 		}
 
-		Address pAttribListData = DereferencePointer(pAttributeList, .offset = 0x04);
+		Address pAttribListData = LoadAddressFromAddress(pAttributeList + g_CAttributeList.m_Attributes);
 
 		// we know there are attributes; make sure our contiguous memory is valid
 		AssertValidAddress(pAttribListData);
 
 		for (int i = 0; i < iNumAttribs; i++) {
-			Address pAttributeEntry = pAttribListData + view_as<Address>(i * 0x10);
-			int attrdef = LoadFromAddressOffset(pAttributeEntry, 0x04, NumberType_Int16);
+			Address pAttributeEntry = pAttribListData + view_as<Address>(i * g_CEconItemAttribute.iSizeOf);
+			int attrdef = LoadFromAddress(pAttributeEntry + g_CEconItemAttribute.m_iAttributeDefinitionIndex, NumberType_Int16);
 
 			Address pAttrDef = GetAttributeDefinitionByID(attrdef);
-			if (!pAttrDef) {
+			if (pAttrDef == Address_Null) {
 				// this shouldn't happen, but just in case
 				continue;
 			}
 
-			Address pDefType = DereferencePointer(pAttrDef + view_as<Address>(0x08));
+			Address pDefType = LoadAddressFromAddress(pAttrDef + g_CEconItemAttributeDefinition.m_pAttrType);
 			if (IsNetworkedRuntimeAttribute(pDefType)) {
 				continue;
 			}
 
-			any rawValue = LoadFromAddressOffset(pAttributeEntry, 0x08, NumberType_Int32);
+			Address rawValue = LoadAddressFromAddress(pAttributeEntry + g_CEconItemAttribute.m_flValue);
 
 			// allow plugins to `TF2Attrib_Set*()` their own instances undisturbed by only
 			// processing attributes that we're aware of
@@ -1280,7 +1631,7 @@ void DestroyManagedAllocatedValues() {
 	}
 }
 
-bool IsAttributeValueInHeap(any rawValue) {
+bool IsAttributeValueInHeap(Address rawValue) {
 	for (int i, n = g_ManagedAllocatedValues.Length; i < n; i++) {
 		HeapAttributeValue a;
 		g_ManagedAllocatedValues.GetArray(i, a, sizeof(a));
@@ -1292,6 +1643,46 @@ bool IsAttributeValueInHeap(any rawValue) {
 	return false;
 }
 
+stock bool Is64Bit() {
+	return Address_PointerSize == view_as<Address>(8);
+}
+
+stock void Address_ToIntArray(Address addr, int arr[2]) {
+	arr[0] = view_as<int>(addr);
+	arr[1] = view_as<int>(addr >> 32);
+}
+
+stock Address IntArray_ToAddress(const int arr[2]) {
+	Address low = view_as<Address>(arr[0]) & ((view_as<Address>(1) << 32) - view_as<Address>(1));
+	return low | (view_as<Address>(arr[1]) << 32);
+}
+
+stock Address GetNativeAddress(int param) {
+	int arr[2];
+	GetNativeArray(param, arr, 2);
+	return IntArray_ToAddress(arr);
+}
+
+stock int SetNativeReturnAddress(Address value) {
+	int arr[2];
+	Address_ToIntArray(value, arr);
+	SetNativeArray(1, arr, 2);
+	return view_as<int>(value);
+}
+
+stock bool StringMap_GetAddress(StringMap map, const char[] key, Address &value) {
+	int arr[2];
+	bool ok = map.GetArray(key, arr, 2);
+	if (ok) value = IntArray_ToAddress(arr);
+	return ok;
+}
+
+stock void StringMap_SetAddress(StringMap map, const char[] key, Address value) {
+	int arr[2];
+	Address_ToIntArray(value, arr);
+	map.SetArray(key, arr, 2);
+}
+
 /**
  * Inserts a string into the game's string pool.  This uses the same implementation that is in
  * SourceMod's core:
@@ -1300,7 +1691,7 @@ bool IsAttributeValueInHeap(any rawValue) {
  */
 stock Address AllocPooledString(const char[] value) {
 	Address pValue;
-	if (g_AllocPooledStringCache.GetValue(value, pValue)) {
+	if (StringMap_GetAddress(g_AllocPooledStringCache, value, pValue)) {
 		return pValue;
 	}
 
@@ -1312,29 +1703,19 @@ stock Address AllocPooledString(const char[] value) {
 	if (offset <= 0) {
 		return Address_Null;
 	}
-	Address pOrig = view_as<Address>(GetEntData(ent, offset));
-	DispatchKeyValue(ent, "targetname", value);
-	pValue = view_as<Address>(GetEntData(ent, offset));
-	SetEntData(ent, offset, pOrig);
 
-	g_AllocPooledStringCache.SetValue(value, pValue);
+	Address pEntity_m_iName = GetEntityAddress(ent) + view_as<Address>(offset);
+
+	Address pOrig = LoadAddressFromAddress(pEntity_m_iName);
+	DispatchKeyValue(ent, "targetname", value);
+	pValue = LoadAddressFromAddress(pEntity_m_iName);
+	StoreAddressToAddress(pEntity_m_iName, pOrig);
+
+	StringMap_SetAddress(g_AllocPooledStringCache, value, pValue);
 	return pValue;
 }
 
-stock int LoadFromAddressOffset(Address addr, int offset, NumberType size) {
-	return LoadFromAddress(addr + view_as<Address>(offset), size);
-}
-
-stock void StoreToAddressOffset(Address addr, int offset, int data, NumberType size) {
-	StoreToAddress(addr + view_as<Address>(offset), data, size);
-}
-
-stock Address DereferencePointer(Address addr, int offset = 0) {
-	return view_as<Address>(LoadFromAddressOffset(addr, offset, NumberType_Int32));
-}
-
-stock int LoadStringFromAddress(Address addr, char[] buffer, int maxlen,
-		bool &bIsNullPointer = false) {
+stock int LoadStringFromAddress(Address addr, char[] buffer, int maxlen, bool &bIsNullPointer = false) {
 	if (!addr) {
 		bIsNullPointer = true;
 		return 0;
@@ -1353,25 +1734,12 @@ stock int LoadStringFromAddress(Address addr, char[] buffer, int maxlen,
  * Runtime assertion that we're receiving valid addresses.
  * If we're not, something has gone terribly wrong and we might need to update.
  */
-stock void AssertValidAddress(Address pAddress) {
-	static Address Address_MinimumValid = view_as<Address>(0x10000);
+void AssertValidAddress(Address pAddress) {
 	if (pAddress == Address_Null) {
 		ThrowError("Received invalid address (NULL)");
 	}
-	if (unsigned_compare(view_as<int>(pAddress), view_as<int>(Address_MinimumValid)) < 0) {
-		ThrowError("Received invalid address (%08x)", pAddress);
-	}
 }
 
-stock int unsigned_compare(int a, int b) {
-	if (a == b) {
-		return 0;
-	}
-	if ((a >>> 31) == (b >>> 31)) {
-		return ((a & 0x7FFFFFFF) > (b & 0x7FFFFFFF)) ? 1 : -1;
-	}
-	return ((a >>> 31) > (b >>> 31)) ? 1 : -1;
-}
 /*
 struct CEconItemAttributeDefinition
 {
